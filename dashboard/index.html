@@ -43,7 +43,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
   const raw = { items: d3.csvParse(window.KC_ITEMS_CSV) };
   const results = {};
   const listeners = [];
-  const defaults = { month: 'all', cat: 'all', area: 'all' };
+  const defaults = { month: 'all', cat: 'all', area: 'all', measure: 'kwh' };
   let params = { ...defaults };
   const fire = () => listeners.forEach((fn) => fn());
   window.dash = {
@@ -71,19 +71,21 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 <div id="dash-root">
 <style>
 .kc { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); font-variant-numeric: tabular-nums; min-width: 0; }
-.kc-head { display: grid; gap: var(--cds-gap-xs); }
+.kc-head { display: grid; gap: var(--cds-gap-xs); min-width: 0; }
+.kc-page { display: grid; gap: var(--cds-gap-md); min-width: 0; }
 .kc-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
-.kc-lede { color: var(--color-fg-muted); margin: 0; max-width: 70ch; }
+.kc-lede { color: var(--color-fg-muted); margin: 0; max-width: 75ch; }
+.kc-lede b, .kc-note b { font-weight: var(--cds-font-weight-medium); color: var(--color-fg); }
 .kc-bar { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: end; justify-content: space-between; }
 .kc-tabs { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); }
 .kc-tab { font: inherit; padding: var(--cds-pad-xs) var(--cds-pad-md); border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); background: transparent; color: var(--color-fg-muted); cursor: pointer; }
 .kc-tab[aria-selected="true"] { background: var(--color-panel); color: var(--color-fg); border-color: var(--color-fg-muted); }
-.kc-tab:focus-visible, .kc-btn:focus-visible, .kc select:focus-visible, .kc input:focus-visible, .kc th button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.kc-tab:focus-visible, .kc-btn:focus-visible, .kc select:focus-visible, .kc input:focus-visible, .kc th button:focus-visible, .kc-seg button:focus-visible, .kc-chipbtn:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
 .kc-filters { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: end; }
-.kc-field { display: grid; gap: 2px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
-.kc select, .kc input[type="search"] { font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); min-width: 0; }
+.kc-field { display: grid; gap: 2px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-width: 0; }
+.kc select, .kc input[type="search"] { font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); min-width: 0; max-width: 100%; }
 .kc-btn { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); background: transparent; color: var(--color-fg); cursor: pointer; }
-.kc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: var(--cds-gap-md); }
+.kc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); gap: var(--cds-gap-md); }
 .kc-kpi { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); display: grid; gap: var(--cds-gap-xs); align-content: start; }
 .kc-kpi-l { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .kc-kpi-v { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.15; }
@@ -95,51 +97,67 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 .kc-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); align-content: start; min-width: 0; }
 .kc-wide { grid-column: 1 / -1; }
 .kc-card h3 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
-.kc-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0; }
+.kc-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0; max-width: 85ch; }
 .kc-card-top { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); justify-content: space-between; align-items: start; }
+.kc-controls { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: end; }
 .kc-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); overflow: hidden; }
-.kc-seg button { font: inherit; font-size: var(--cds-font-size-caption); border: 0; background: transparent; color: var(--color-fg-muted); padding: 2px var(--cds-pad-sm); cursor: pointer; }
-.kc-seg button[aria-pressed="true"] { background: var(--color-bg); color: var(--color-fg); }
+.kc-seg button { font: inherit; font-size: var(--cds-font-size-caption); border: 0; background: transparent; color: var(--color-fg-muted); padding: var(--cds-pad-xs) var(--cds-pad-sm); cursor: pointer; }
+.kc-seg button[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); }
 .kc-chart { position: relative; min-height: 240px; }
 .kc-chart.kc-short { min-height: 180px; }
+.kc-chart.kc-tall { min-height: 300px; }
 .kc-svg { display: block; overflow: visible; }
 .kc-svg text { fill: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-family: var(--font-anthropic-sans); }
+.kc-svg .kc-strong { fill: var(--color-fg); }
+.kc-svg .kc-big { fill: var(--color-fg); font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-title); }
 .kc-svg .kc-gridl { stroke: var(--cds-chart-grid); stroke-width: 1; }
 .kc-svg .kc-axis { stroke: var(--cds-chart-axis); stroke-width: 1; }
 .kc-svg .kc-ref { stroke: var(--cds-chart-reference); stroke-width: 1; stroke-dasharray: 4 3; }
 .kc-svg .kc-hit { fill: transparent; cursor: pointer; }
 .kc-svg .kc-val { fill: var(--color-fg); }
-.kc-tip { position: absolute; z-index: 2; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); display: grid; gap: 2px; min-width: 9rem; }
+.kc-tip { position: absolute; z-index: 2; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); display: grid; gap: 2px; min-width: 10rem; max-width: 20rem; }
 .kc-tip-h { color: var(--cds-text-secondary); }
 .kc-tip-r { display: flex; align-items: center; gap: var(--cds-gap-xs); }
-.kc-tip-r b { margin-left: auto; font-weight: var(--cds-font-weight-medium); }
-.kc-sw { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.kc-tip-r b { margin-left: auto; padding-left: var(--cds-gap-sm); font-weight: var(--cds-font-weight-medium); white-space: nowrap; }
+.kc-sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; flex: none; }
 .kc-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .kc-legend span { display: inline-flex; align-items: center; gap: var(--cds-gap-xs); }
 .kc-split { display: grid; gap: var(--cds-gap-sm); }
-.kc-split-row { display: grid; grid-template-columns: minmax(0, 9rem) 1fr auto; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-caption); }
+.kc-split-row { display: grid; grid-template-columns: minmax(0, 8rem) 1fr minmax(0, auto); gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-caption); cursor: pointer; }
 .kc-split-track { height: 12px; background: var(--color-bg); border-radius: 6px; overflow: hidden; }
 .kc-split-fill { height: 100%; border-radius: 6px; }
 .kc-tablebox { max-height: 34rem; overflow: auto; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
 .kc-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); }
 .kc-table th { position: sticky; top: 0; background: var(--color-panel); text-align: left; font-weight: var(--cds-font-weight-medium); border-bottom: 1px solid var(--color-border-line); padding: 0; z-index: 1; white-space: nowrap; }
+.kc-table th.kc-num { text-align: right; }
 .kc-table th button { font: inherit; color: var(--color-fg-muted); background: transparent; border: 0; padding: var(--cds-pad-xs) var(--cds-pad-sm); cursor: pointer; width: 100%; text-align: inherit; }
+.kc-table th span.kc-th { display: block; color: var(--color-fg-muted); padding: var(--cds-pad-xs) var(--cds-pad-sm); }
 .kc-table th[aria-sort] button { color: var(--color-fg); }
 .kc-table td { padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: middle; }
 .kc-table .kc-num { text-align: right; white-space: nowrap; }
-.kc-table tbody tr { cursor: pointer; }
-.kc-table tbody tr:hover td { background: var(--color-bg); }
+.kc-table tbody tr.kc-click { cursor: pointer; }
+.kc-table tbody tr.kc-click:hover td { background: var(--color-bg); }
 .kc-table tbody tr[aria-selected="true"] td { background: var(--color-bg); font-weight: var(--cds-font-weight-medium); }
+.kc-table tbody tr.kc-total td { font-weight: var(--cds-font-weight-medium); }
 .kc-addr { max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kc-spark { display: inline-block; vertical-align: middle; margin-left: var(--cds-gap-xs); }
 .kc-chip { display: inline-block; padding: 0 6px; border-radius: 999px; border: 1px solid var(--color-border-line); color: var(--color-warn); white-space: nowrap; margin: 1px 2px 1px 0; }
 .kc-chip.kc-bad { color: var(--color-bad); }
+.kc-chipbtn { font: inherit; font-size: var(--cds-font-size-caption); display: inline-flex; align-items: center; gap: var(--cds-gap-xs); padding: 2px var(--cds-pad-sm); border-radius: 999px; border: 1px solid var(--color-border-line); background: var(--color-bg); color: var(--color-fg); cursor: pointer; max-width: 100%; }
+.kc-chips { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); align-items: center; }
 .kc-sep { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .kc-count { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .kc-sim { display: grid; gap: var(--cds-gap-md); }
 .kc-sim input[type="range"] { width: 100%; accent-color: var(--color-fg); }
 .kc-sim-out { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--cds-gap-md); }
-.kc-defs { display: grid; gap: var(--cds-gap-xs); margin: 0; padding-left: 1.1rem; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); max-width: 80ch; }
+.kc-defs { display: grid; gap: var(--cds-gap-xs); margin: 0; padding-left: 1.1rem; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); max-width: 85ch; }
+.kc-clockwrap { display: grid; grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); gap: var(--cds-gap-lg); align-items: center; }
+@media (max-width: 720px) { .kc-clockwrap { grid-template-columns: 1fr; } }
+.kc-clock { position: relative; min-height: 280px; max-width: 22rem; width: 100%; margin-inline: auto; }
+.kc-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: var(--cds-gap-sm) var(--cds-gap-md); margin: 0; }
+.kc-facts div { display: grid; gap: 2px; }
+.kc-facts dt { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.kc-facts dd { margin: 0; font-size: var(--cds-font-size-heading); }
 .kc-fail { display: flex; align-items: center; justify-content: center; gap: var(--cds-gap-xs); min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
 .kc-fail::before { content: ""; width: 0.375rem; height: 0.375rem; border-radius: 50%; background: var(--color-bad); }
 .kc [data-dash-source-state=empty] { color: transparent; }
@@ -150,18 +168,26 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 <div class="kc">
   <header class="kc-head">
     <h2 class="kc-title" id="naslov">Јавно осветлување – Општина Кичево</h2>
-    <p class="kc-lede" id="zakluchok"><span class="dash-skeleton" data-source="cube" data-field="billed" data-where="month=all&amp;cat=all&amp;area=all" id="lede-billed">—</span></p>
+    <p class="kc-lede" id="zakluchok"><span class="dash-skeleton" data-source="cube" data-field="kwh" data-where="month=all&amp;cat=all&amp;area=all" id="lede-kwh">—</span></p>
   </header>
 
   <div class="kc-bar">
     <div class="kc-tabs" role="tablist" aria-label="Страници">
       <button class="kc-tab" role="tab" id="tab-pregled" aria-controls="pregled" aria-selected="true">Преглед</button>
+      <button class="kc-tab" role="tab" id="tab-sporedba" aria-controls="sporedba" aria-selected="false">Споредба на kWh</button>
+      <button class="kc-tab" role="tab" id="tab-chasovnik" aria-controls="chasovnik" aria-selected="false">Временски часовник</button>
       <button class="kc-tab" role="tab" id="tab-mesta" aria-controls="mesta" aria-selected="false">Мерни места</button>
       <button class="kc-tab" role="tab" id="tab-efikasnost" aria-controls="efikasnost" aria-selected="false">Ефикасност и аномалии</button>
     </div>
     <div class="kc-filters">
+      <div class="kc-field">Мерка
+        <div class="kc-seg" role="group" aria-label="Мерка" id="f-measure">
+          <button type="button" data-v="kwh" aria-pressed="true">kWh</button>
+          <button type="button" data-v="billed" aria-pressed="false">Денари</button>
+        </div>
+      </div>
       <label class="kc-field">Месец
-        <select id="f-month" data-source="cube"></select>
+        <select id="f-month"></select>
       </label>
       <label class="kc-field">Категорија
         <select id="f-cat">
@@ -178,24 +204,19 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
   </div>
 
   <!-- ПРЕГЛЕД -->
-  <section id="pregled" role="tabpanel" aria-labelledby="tab-pregled" class="kc-head" style="gap: var(--cds-gap-md)">
+  <section id="pregled" role="tabpanel" aria-labelledby="tab-pregled" class="kc-page">
     <div class="kc-kpis" id="kpis">
-      <div class="kc-kpi"><span class="kc-kpi-l">Вкупно фактурирано</span><span class="kc-kpi-v dash-skeleton" id="k-billed" data-source="cube" data-field="billed">—</span><span class="kc-kpi-u">денари</span><span class="kc-kpi-d" id="k-billed-d" data-source="cube" data-field="billed_chg"></span></div>
       <div class="kc-kpi"><span class="kc-kpi-l">Потрошена енергија</span><span class="kc-kpi-v dash-skeleton" id="k-kwh" data-source="cube" data-field="kwh">—</span><span class="kc-kpi-u">kWh</span><span class="kc-kpi-d" id="k-kwh-d" data-source="cube" data-field="kwh_chg"></span></div>
-      <div class="kc-kpi"><span class="kc-kpi-l">Просечна цена</span><span class="kc-kpi-v dash-skeleton" id="k-price" data-source="cube" data-field="price">—</span><span class="kc-kpi-u">ден./kWh (износ пред ППЕЕ ÷ kWh)</span><span class="kc-kpi-d" id="k-price-d" data-source="cube" data-field="price_chg"></span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Енергија по ден</span><span class="kc-kpi-v dash-skeleton" id="k-kwhday" data-source="cube" data-field="kwh_day">—</span><span class="kc-kpi-u">kWh/ден</span><span class="kc-kpi-d" id="k-kwhday-d" data-source="cube" data-field="kwh_day_chg"></span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Вкупно фактурирано</span><span class="kc-kpi-v dash-skeleton" id="k-billed" data-source="cube" data-field="billed">—</span><span class="kc-kpi-u">денари</span><span class="kc-kpi-d" id="k-billed-d" data-source="cube" data-field="billed_chg"></span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Просечна цена</span><span class="kc-kpi-v dash-skeleton" id="k-price" data-source="cube" data-field="price">—</span><span class="kc-kpi-u">ден./kWh</span><span class="kc-kpi-d" id="k-price-d" data-source="cube" data-field="price_chg"></span></div>
       <div class="kc-kpi"><span class="kc-kpi-l">Износ ППЕЕ</span><span class="kc-kpi-v dash-skeleton" id="k-ppee" data-source="cube" data-field="amount_ppee">—</span><span class="kc-kpi-u">денари</span><span class="kc-kpi-d" id="k-ppee-d" data-source="cube" data-field="kwh_ppee"></span></div>
       <div class="kc-kpi"><span class="kc-kpi-l">Мерни места</span><span class="kc-kpi-v dash-skeleton" id="k-meters" data-source="cube" data-field="meters">—</span><span class="kc-kpi-u">со фактура во периодот</span><span class="kc-kpi-d" id="k-zero" data-source="cube" data-field="zero"></span></div>
     </div>
 
     <div class="kc-grid">
       <div class="kc-card kc-wide" id="karta-mesecno">
-        <div class="kc-card-top">
-          <div class="kc-head"><h3 id="h-mesecno">Месечна сметка</h3><p class="kc-note">Јули 2025 – Јуни 2026. Кликнете на месец за да го изберете.</p></div>
-          <div class="kc-seg" role="group" aria-label="Мерка">
-            <button type="button" data-metric="billed" aria-pressed="true">Денари</button>
-            <button type="button" data-metric="kwh" aria-pressed="false">kWh</button>
-          </div>
-        </div>
+        <div class="kc-head"><h3 id="h-mesecno">Месечна потрошувачка (kWh)</h3><p class="kc-note">Јули 2025 – Јуни 2026. Кликнете на месец за да го изберете. Мерката (kWh или денари) се менува горе десно.</p></div>
         <div class="kc-chart dash-skeleton" id="ch-monthly" data-source="cube"></div>
       </div>
 
@@ -212,19 +233,173 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
       </div>
 
       <div class="kc-card" id="karta-podracja">
-        <div class="kc-head"><h3>По подрачје</h3><p class="kc-note">Фактурирано за избраниот месец и категорија. Кликнете на подрачје за филтер.</p></div>
+        <div class="kc-head"><h3 id="h-areas">По подрачје</h3><p class="kc-note">За избраниот месец и категорија. Кликнете на подрачје за филтер.</p></div>
         <div class="kc-chart dash-skeleton" id="ch-areas" data-source="cube"></div>
       </div>
 
       <div class="kc-card" id="karta-kategorii">
-        <div class="kc-head"><h3>По категорија на приклучок</h3><p class="kc-note">Удел во фактурираниот износ и во kWh за избраниот месец и подрачје.</p></div>
+        <div class="kc-head"><h3>По категорија на приклучок</h3><p class="kc-note">Удел во kWh и во фактурираниот износ за избраниот месец и подрачје. Кликнете на категорија за филтер.</p></div>
         <div class="kc-split dash-skeleton" id="ch-cats" data-source="cube"></div>
       </div>
     </div>
   </section>
 
+  <!-- СПОРЕДБА -->
+  <section id="sporedba" role="tabpanel" aria-labelledby="tab-sporedba" class="kc-page" hidden>
+    <div class="kc-card" id="karta-sporedba">
+      <div class="kc-card-top">
+        <div class="kc-head"><h3 id="h-cmp">Споредба по месеци</h3><p class="kc-note" id="cmp-note">Изберете до шест подрачја или мерни места.</p></div>
+        <div class="kc-controls">
+          <div class="kc-field">Споредувај
+            <div class="kc-seg" role="group" aria-label="Што се споредува" id="cmp-dim">
+              <button type="button" data-v="area" aria-pressed="true">Подрачја</button>
+              <button type="button" data-v="meter" aria-pressed="false">Мерни места</button>
+            </div>
+          </div>
+          <div class="kc-field">Приказ
+            <div class="kc-seg" role="group" aria-label="Приказ" id="cmp-norm">
+              <button type="button" data-v="total" aria-pressed="true">Вкупно</button>
+              <button type="button" data-v="day" aria-pressed="false">По ден</button>
+              <button type="button" data-v="meter" aria-pressed="false">По мерно место</button>
+            </div>
+          </div>
+          <label class="kc-field">Додај
+            <select id="cmp-add" data-source="cube meters"></select>
+          </label>
+        </div>
+      </div>
+      <div class="kc-chips" id="cmp-chips"></div>
+      <div class="kc-chart kc-tall dash-skeleton" id="ch-cmp" data-source="cube meters"></div>
+      <div class="kc-tablebox" style="max-height: none">
+        <table class="kc-table" id="t-cmp"><thead></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="kc-card" id="karta-mvm">
+      <div class="kc-card-top">
+        <div class="kc-head"><h3 id="h-mvm">Месец наспроти месец</h3><p class="kc-note" id="mvm-note">Промена по подрачје меѓу два месеци, за избраната категорија.</p></div>
+        <div class="kc-controls">
+          <label class="kc-field">Од<select id="mvm-a"></select></label>
+          <label class="kc-field">До<select id="mvm-b"></select></label>
+          <div class="kc-field">Основа
+            <div class="kc-seg" role="group" aria-label="Основа" id="mvm-basis">
+              <button type="button" data-v="total" aria-pressed="false">Вкупно</button>
+              <button type="button" data-v="day" aria-pressed="true">По ден</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="kc-lede" id="mvm-sum"></p>
+      <div class="kc-chart dash-skeleton" id="ch-mvm" data-source="pairs"></div>
+    </div>
+  </section>
+
+  <!-- ВРЕМЕНСКИ ЧАСОВНИК -->
+  <section id="chasovnik" role="tabpanel" aria-labelledby="tab-chasovnik" class="kc-page" hidden>
+    <div class="kc-card" id="karta-tajmer">
+      <div class="kc-head">
+        <h3>Временски часовник за уличното осветлување</h3>
+        <p class="kc-note">Астрономски часовник за Кичево (41,51° С, 20,96° И): светилките се вклучуваат при зајдисонце и се исклучуваат при изгрејсонце, со поместување и ноќен режим по ваш избор. Пресметката важи само за категоријата СН/НН LV1.1 – улично, во избраното подрачје.</p>
+      </div>
+      <div class="kc-controls">
+        <label class="kc-field">Вклучување
+          <select id="t-on">
+            <option value="-15">15 мин пред зајдисонце</option>
+            <option value="0">Во зајдисонце</option>
+            <option value="10">10 мин по зајдисонце</option>
+            <option value="20">20 мин по зајдисонце</option>
+            <option value="30">30 мин по зајдисонце</option>
+          </select>
+        </label>
+        <label class="kc-field">Исклучување
+          <select id="t-off">
+            <option value="-15">15 мин по изгрејсонце</option>
+            <option value="0">Во изгрејсонце</option>
+            <option value="10">10 мин пред изгрејсонце</option>
+            <option value="20">20 мин пред изгрејсонце</option>
+            <option value="30">30 мин пред изгрејсонце</option>
+          </select>
+        </label>
+        <label class="kc-field">Ноќен режим
+          <select id="t-dim">
+            <option value="none">Без намалување</option>
+            <option value="d70">Намалување на 70 % (23:00–05:00)</option>
+            <option value="d50">Намалување на 50 % (00:00–05:00)</option>
+            <option value="off15">Исклучено (01:00–05:00)</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="kc-kpis" id="t-kpis">
+      <div class="kc-kpi"><span class="kc-kpi-l">Реална потрошувачка</span><span class="kc-kpi-v dash-skeleton" id="tk-actual" data-source="timer_kwh" data-field="kwh_actual">—</span><span class="kc-kpi-u">kWh, улично, 12 месеци</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Само зајдисонце–изгрејсонце</span><span class="kc-kpi-v dash-skeleton" id="tk-astro" data-source="timer_kwh" data-field="kwh_astro">—</span><span class="kc-kpi-u">kWh, проценка</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Со избраниот часовник</span><span class="kc-kpi-v dash-skeleton" id="tk-timer" data-source="timer_kwh" data-field="kwh_timer">—</span><span class="kc-kpi-u">kWh, проценка</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Заштеда на енергија</span><span class="kc-kpi-v dash-skeleton" id="tk-saved" data-source="timer_kwh" data-field="saved_kwh">—</span><span class="kc-kpi-u">kWh/год.</span><span class="kc-kpi-d" id="tk-share" data-source="timer_kwh" data-field="saved_share"></span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Заштеда во пари</span><span class="kc-kpi-v dash-skeleton" id="tk-den" data-source="timer_kwh" data-field="saved_den">—</span><span class="kc-kpi-u">ден./год., по фактурираната цена</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Проценета моќност</span><span class="kc-kpi-v dash-skeleton" id="tk-kw" data-source="timer_kwh" data-field="power_kw">—</span><span class="kc-kpi-u">kW вклучени светилки (просек)</span></div>
+    </div>
+
+    <div class="kc-grid">
+      <div class="kc-card" id="karta-saat">
+        <div class="kc-head"><h3 id="h-clock">Часовник на ден</h3><p class="kc-note" id="clock-note">24-часовен приказ, полноќ е горе. Внатрешниот прстен е ноќта (зајдисонце → изгрејсонце), средниот е распоредот на часовникот, надворешниот е нижата тарифа. Месецот се бира со филтерот горе (за „Сите 12 месеци“ се прикажува декември).</p></div>
+        <div class="kc-clockwrap">
+          <div class="kc-clock dash-skeleton" id="ch-clock" data-source="sun"></div>
+          <dl class="kc-facts" id="clock-facts">
+            <div><dt>Зајдисонце</dt><dd id="cf-set" data-source="sun" data-field="sunset">—</dd></div>
+            <div><dt>Изгрејсонце</dt><dd id="cf-rise" data-source="sun" data-field="sunrise">—</dd></div>
+            <div><dt>Ноќ</dt><dd id="cf-night" data-source="sun" data-field="night">—</dd></div>
+            <div><dt>Вклучување</dt><dd id="cf-on">—</dd></div>
+            <div><dt>Исклучување</dt><dd id="cf-off">—</dd></div>
+            <div><dt>Работа во месецот</dt><dd id="cf-hours" data-source="timer" data-field="hours">—</dd></div>
+          </dl>
+        </div>
+        <div class="kc-legend" id="lg-clock"></div>
+      </div>
+
+      <div class="kc-card" id="karta-godina">
+        <div class="kc-head"><h3>Зајдисонце и изгрејсонце низ годината</h3><p class="kc-note">Секој ден од јули 2025 до јуни 2026. Сивата површина е ноќта, обоената е времето кога часовникот ги држи светилките вклучени. Кликнете за да изберете месец.</p></div>
+        <div class="kc-legend" id="lg-year"></div>
+        <div class="kc-chart kc-tall dash-skeleton" id="ch-year" data-source="sun"></div>
+      </div>
+
+      <div class="kc-card kc-wide" id="karta-tajmer-mesecno">
+        <div class="kc-head"><h3>Реално наспроти часовник, по месец</h3><p class="kc-note">kWh за уличното осветлување во избраното подрачје. Проценката = проценета моќност × часови вклучено според часовникот.</p></div>
+        <div class="kc-legend" id="lg-tm"></div>
+        <div class="kc-chart dash-skeleton" id="ch-tm" data-source="timer_kwh"></div>
+        <div class="kc-tablebox">
+          <table class="kc-table" id="t-timer" data-source="timer_kwh" data-row-key="id">
+            <thead><tr>
+              <th data-field="month_label"><span class="kc-th">Месец</span></th>
+              <th data-field="night_hours" class="kc-num kc-hide-sm"><span class="kc-th">Ноќ (ч)</span></th>
+              <th data-field="timer_hours" class="kc-num kc-hide-sm"><span class="kc-th">Часовник (ч)</span></th>
+              <th data-field="power_kw" class="kc-num kc-hide-sm"><span class="kc-th">Моќност (kW)</span></th>
+              <th data-field="kwh_actual" class="kc-num"><span class="kc-th">Реално kWh</span></th>
+              <th data-field="kwh_timer" class="kc-num"><span class="kc-th">Часовник kWh</span></th>
+              <th data-field="saved_kwh" class="kc-num"><span class="kc-th">Заштеда kWh</span></th>
+              <th data-field="saved_den" class="kc-num"><span class="kc-th">Заштеда ден.</span></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="kc-card kc-wide" id="karta-metod">
+        <div class="kc-head"><h3>Како е пресметано</h3></div>
+        <ul class="kc-defs">
+          <li><b>Изгрејсонце и зајдисонце</b> се пресметани за секој ден по формулата на NOAA за Кичево, по локално време (CET/CEST, со летно сметање на времето).</li>
+          <li><b>Моќноста</b> на вклучените светилки е проценета од нижата тарифа: kWh во АНТ ÷ часовите на ноќта што паѓаат во нижата тарифа. Претпоставка: нижата тарифа е 22:00–07:00 секој ден и цела недела.</li>
+          <li><b>Само зајдисонце–изгрејсонце</b> = проценетата моќност × часовите на ноќта: колку би се трошело кога светилките би работеле точно од зајдисонце до изгрејсонце.</li>
+          <li><b>Со часовникот</b> = моќноста × часовите според избраното поместување; часовите во ноќниот режим се бројат со намалената моќност.</li>
+          <li><b>Заштедата</b> е реалната потрошувачка минус потрошувачката со часовникот, по просечната фактурирана цена на подрачјето за тој месец. Негативна вредност значи дека часовникот би трошел повеќе од сегашниот режим.</li>
+          <li>Кога реалната потрошувачка е над „само зајдисонце–изгрејсонце“, светилките најверојатно светат пред зајдисонце или по изгрејсонце (фотоќелии, рачни прекинувачи, светење дење).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   <!-- МЕРНИ МЕСТА -->
-  <section id="mesta" role="tabpanel" aria-labelledby="tab-mesta" class="kc-head" style="gap: var(--cds-gap-md)" hidden>
+  <section id="mesta" role="tabpanel" aria-labelledby="tab-mesta" class="kc-page" hidden>
     <div class="kc-card" id="karta-tabela">
       <div class="kc-card-top">
         <div class="kc-head"><h3>Сите мерни места</h3><p class="kc-note" id="t-note">Вредности за избраниот месец. Кликнете на ред за детали.</p></div>
@@ -239,6 +414,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
             <th data-field="area" class="kc-hide-sm"><button type="button" data-sort="area">Подрачје</button></th>
             <th data-field="cat_label" class="kc-hide-sm"><button type="button" data-sort="cat_label">Категорија</button></th>
             <th data-field="kwh" class="kc-num"><button type="button" data-sort="kwh">kWh</button></th>
+            <th data-field="kwh_day" class="kc-num kc-hide-sm"><button type="button" data-sort="kwh_day">kWh/ден</button></th>
             <th data-field="billed" class="kc-num"><button type="button" data-sort="billed">Фактурирано (ден.)</button></th>
             <th data-field="price" class="kc-num kc-hide-sm"><button type="button" data-sort="price">ден./kWh</button></th>
             <th data-field="avt_share" class="kc-num kc-hide-sm"><button type="button" data-sort="avt_share">Удел АВТ</button></th>
@@ -250,29 +426,32 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
     </div>
 
     <div class="kc-card" id="karta-detal">
-      <div class="kc-head"><h3 id="d-title">Детали за мерно место</h3><p class="kc-note" id="d-sub">Изберете мерно место од табелата.</p></div>
+      <div class="kc-card-top">
+        <div class="kc-head"><h3 id="d-title">Детали за мерно место</h3><p class="kc-note" id="d-sub">Изберете мерно место од табелата.</p></div>
+        <button class="kc-btn" type="button" id="d-cmp" hidden>Додај во споредба</button>
+      </div>
       <div class="kc-legend" id="lg-detail"></div>
       <div class="kc-chart kc-short" id="ch-detail" data-source="meters"></div>
     </div>
   </section>
 
   <!-- ЕФИКАСНОСТ -->
-  <section id="efikasnost" role="tabpanel" aria-labelledby="tab-efikasnost" class="kc-head" style="gap: var(--cds-gap-md)" hidden>
+  <section id="efikasnost" role="tabpanel" aria-labelledby="tab-efikasnost" class="kc-page" hidden>
     <div class="kc-grid">
       <div class="kc-card" id="karta-pareto">
-        <div class="kc-head"><h3>Каде оди трошокот</h3>
-          <p class="kc-note">Кумулативен удел во фактурираното за 12 месеци, мерните места подредени од најголемо кон најмало.
+        <div class="kc-head"><h3 id="h-pareto">Каде оди енергијата</h3>
+          <p class="kc-note"><span id="pareto-lead">Кумулативен удел во kWh за 12 месеци</span>, мерните места подредени од најголемо кон најмало.
             Првите 10: <b data-source="pareto" data-field="cum_share" id="p-top10">—</b>, првите 20: <b data-source="pareto" data-field="cum_share" id="p-top20">—</b>.</p></div>
         <div class="kc-chart kc-short dash-skeleton" id="ch-pareto" data-source="pareto"></div>
       </div>
 
       <div class="kc-card" id="karta-avt">
-        <div class="kc-head"><h3>Удел на виша тарифа – улично осветлување</h3><p class="kc-note">Уличните светилки треба да работат главно ноќе, во нижа тарифа. Растечки удел на АВТ значи повеќе часови во скапата тарифа.</p></div>
+        <div class="kc-head"><h3>Удел на виша тарифа – улично осветлување</h3><p class="kc-note">Уличните светилки работат главно ноќе, во нижа тарифа. Повисок удел на АВТ значи повеќе часови во вишата тарифа (рано навечер или дење).</p></div>
         <div class="kc-chart kc-short dash-skeleton" id="ch-avt" data-source="cube"></div>
       </div>
 
       <div class="kc-card kc-wide" id="karta-zastedi">
-        <div class="kc-head"><h3>Симулатор на заштеда</h3><p class="kc-note">Колку би се заштедило за 12 месеци ако потрошувачката се намали за избраниот процент (на пр. замена со LED светилки, димирање, астрономски тајмери), при истите цени. Се однесува на избраната категорија и подрачје.</p></div>
+        <div class="kc-head"><h3>Симулатор на заштеда</h3><p class="kc-note">Колку би се заштедило за 12 месеци ако потрошувачката се намали за избраниот процент (на пр. замена со LED светилки или димирање), при истите цени. Важи за избраната категорија и подрачје. За заштеда само од распоредот на работа, видете „Временски часовник“.</p></div>
         <div class="kc-sim">
           <label class="kc-field">Намалување на потрошувачката: <b id="s-pct-l">40 %</b>
             <input type="range" id="s-pct" min="10" max="70" step="10" value="40">
@@ -298,7 +477,8 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
               <th data-field="zero_months" class="kc-num"><button type="button" data-sort="zero_months">Месеци со 0 kWh</button></th>
               <th data-field="spike" class="kc-num kc-hide-sm"><button type="button" data-sort="spike">Макс ÷ медијана</button></th>
               <th data-field="avt_share" class="kc-num kc-hide-sm"><button type="button" data-sort="avt_share">Удел АВТ</button></th>
-              <th data-field="billed" class="kc-num"><button type="button" data-sort="billed">Фактурирано (ден.)</button></th>
+              <th data-field="kwh" class="kc-num"><button type="button" data-sort="kwh">kWh</button></th>
+              <th data-field="billed" class="kc-num kc-hide-sm"><button type="button" data-sort="billed">Фактурирано (ден.)</button></th>
               <th data-field="flags"><button type="button" data-sort="flags">Ознаки</button></th>
             </tr></thead>
             <tbody></tbody>
@@ -311,6 +491,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
         <ul class="kc-defs">
           <li><b>Фактурирано</b> е колоната „ВКУПНО фактурирано (ден.)“ од табелата: износот за енергијата без делот од ППЕЕ. <b>Износ ППЕЕ</b> е посебната ставка за енергијата од повластени производители.</li>
           <li><b>Просечна цена</b> = „ВКУПНО (ден.)“ пред ППЕЕ корекција ÷ вкупно kWh, исто како во листот „Месечен преглед“. Кога таа отстапува од единечната цена на фактурата, дел од ставките во тој месец се пресметани со друга цена.</li>
+          <li><b>kWh по ден</b> = kWh ÷ број на денови во месецот (365 за целиот период), за да се споредуваат месеци со различна должина. <b>kWh по мерно место</b> = kWh ÷ број на мерни места со фактура.</li>
           <li>Кај неколку мерни места (главно објекти) вкупните kWh се поголеми од збирот АВТ + АНТ. Разликата е прикажана како <b>Неразделено</b>, а <b>удел на АВТ</b> = АВТ ÷ (АВТ + АНТ).</li>
           <li><b>Подрачје</b> е првиот збор од адресата на мерното место (поранешна општина или село). Адресата во табелата е онаа од последната фактура.</li>
           <li>Според листот „Преглед“: дупликатите од јули 2025 (НН LV2 – објекти) се отстранети, заменетите ППЕЕ колони се коригирани, сумарниот ред „ВКУПНО“ од јануари 2026 е исклучен, а листот „0308“ е март 2026.</li>
@@ -326,15 +507,18 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 dash.calc('cube', {
   inputs: ['items'],
   title: 'Збир по месец, категорија и подрачје',
-  description: 'Ставките собрани по месец, категорија и подрачје (прв збор од адресата), со редови „all“ за секое ниво и промена во однос на претходниот месец.',
+  description: 'Ставките собрани по месец, категорија и подрачје (прв збор од адресата), со редови „all“ за секое ниво, kWh по ден и по мерно место и промена во однос на претходниот месец.',
   fn: (items) => {
     const names = { 'Јануари': '01', 'Февруари': '02', 'Март': '03', 'Април': '04', 'Мај': '05', 'Јуни': '06', 'Јули': '07', 'Август': '08', 'Септември': '09', 'Октомври': '10', 'Ноември': '11', 'Декември': '12' };
     const monthKey = (m) => { const [n, y] = String(m).trim().split(/\s+/); return y + '-' + names[n]; };
     const areaOf = (a) => { const w = String(a).trim().split(/[\s,(]+/).filter(Boolean); return (w[0] === 'ГОРНО' || w[0] === 'ДОЛНО') ? w[0] + ' ' + w[1] : w[0]; };
     const catOf = (c) => String(c).includes('LV2') ? 'objekti' : 'ulicno';
+    const daysIn = (k) => { const [y, m] = k.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
     const acc = new Map();
+    const monthSet = new Set();
     for (const r of items) {
       const m = monthKey(r.month), c = catOf(r.category), a = areaOf(r.address);
+      monthSet.add(m);
       const kwh = Number(r.kwh);
       for (const mm of [m, 'all']) for (const cc of [c, 'all']) for (const aa of [a, 'all']) {
         const k = mm + '|' + cc + '|' + aa;
@@ -346,15 +530,21 @@ dash.calc('cube', {
         g.ids.add(String(r.meter)); if (kwh === 0) g.zero += 1;
       }
     }
+    const totalDays = [...monthSet].reduce((s, k) => s + daysIn(k), 0);
     const round = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
-    const out = [...acc.values()].map((g) => ({
-      month: g.month, cat: g.cat, area: g.area,
-      kwh: round(g.kwh, 2), kwh_avt: round(g.kwh_avt, 2), kwh_ant: round(g.kwh_ant, 2), kwh_other: round(Math.max(0, g.kwh - g.kwh_avt - g.kwh_ant), 2),
-      amount: round(g.amount, 2), kwh_ppee: round(g.kwh_ppee, 2), amount_ppee: round(g.amount_ppee, 2), billed: round(g.billed, 2),
-      price: g.kwh > 0 ? round(g.amount / g.kwh, 4) : null, unit_price: g.unit_price,
-      avt_share: g.kwh_avt + g.kwh_ant > 0 ? round(g.kwh_avt / (g.kwh_avt + g.kwh_ant), 4) : null,
-      meters: g.ids.size, zero: g.zero,
-    }));
+    const out = [...acc.values()].map((g) => {
+      const days = g.month === 'all' ? totalDays : daysIn(g.month);
+      return {
+        month: g.month, cat: g.cat, area: g.area, days,
+        kwh: round(g.kwh, 2), kwh_avt: round(g.kwh_avt, 2), kwh_ant: round(g.kwh_ant, 2), kwh_other: round(Math.max(0, g.kwh - g.kwh_avt - g.kwh_ant), 2),
+        amount: round(g.amount, 2), kwh_ppee: round(g.kwh_ppee, 2), amount_ppee: round(g.amount_ppee, 2), billed: round(g.billed, 2),
+        kwh_day: round(g.kwh / days, 2), billed_day: round(g.billed / days, 2),
+        kwh_meter: round(g.kwh / g.ids.size, 2), billed_meter: round(g.billed / g.ids.size, 2),
+        price: g.kwh > 0 ? round(g.amount / g.kwh, 4) : null, unit_price: g.unit_price,
+        avt_share: g.kwh_avt + g.kwh_ant > 0 ? round(g.kwh_avt / (g.kwh_avt + g.kwh_ant), 4) : null,
+        meters: g.ids.size, zero: g.zero,
+      };
+    });
     const byKey = new Map(out.map((r) => [r.month + '|' + r.cat + '|' + r.area, r]));
     const prevMonth = (m) => { let [y, n] = m.split('-').map(Number); n -= 1; if (n === 0) { n = 12; y -= 1; } return y + '-' + String(n).padStart(2, '0'); };
     const chg = (a, b) => (a == null || b == null || b === 0) ? null : round(a / b - 1, 4);
@@ -362,6 +552,7 @@ dash.calc('cube', {
       const p = r.month === 'all' ? null : byKey.get(prevMonth(r.month) + '|' + r.cat + '|' + r.area);
       r.billed_chg = p ? chg(r.billed, p.billed) : null;
       r.kwh_chg = p ? chg(r.kwh, p.kwh) : null;
+      r.kwh_day_chg = p ? chg(r.kwh_day, p.kwh_day) : null;
       r.price_chg = p ? chg(r.price, p.price) : null;
     }
     return out;
@@ -371,28 +562,35 @@ dash.calc('cube', {
 dash.calc('meters', {
   inputs: ['items'],
   title: 'Збир по мерно место',
-  description: 'Секое мерно место по месец и за сите 12 месеци (month = all), со удел на виша тарифа и автоматски ознаки за проверка.',
+  description: 'Секое мерно место по месец и за сите 12 месеци (month = all), со kWh по ден, удел на виша тарифа и автоматски ознаки за проверка.',
   fn: (items) => {
     const names = { 'Јануари': '01', 'Февруари': '02', 'Март': '03', 'Април': '04', 'Мај': '05', 'Јуни': '06', 'Јули': '07', 'Август': '08', 'Септември': '09', 'Октомври': '10', 'Ноември': '11', 'Декември': '12' };
     const monthKey = (m) => { const [n, y] = String(m).trim().split(/\s+/); return y + '-' + names[n]; };
     const areaOf = (a) => { const w = String(a).trim().split(/[\s,(]+/).filter(Boolean); return (w[0] === 'ГОРНО' || w[0] === 'ДОЛНО') ? w[0] + ' ' + w[1] : w[0]; };
     const catOf = (c) => String(c).includes('LV2') ? 'objekti' : 'ulicno';
+    const daysIn = (k) => { const [y, m] = k.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
     const catLabel = { ulicno: 'Улично', objekti: 'Објекти' };
     const round = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
     const per = new Map();
+    const monthSet = new Set();
     for (const r of items) {
       const id = String(r.meter);
       let m = per.get(id);
       if (!m) { m = { id, rows: [] }; per.set(id, m); }
-      m.rows.push({ month: monthKey(r.month), address: String(r.address).trim(), cat: catOf(r.category), meter_no: String(r.meter_no), kwh: Number(r.kwh), kwh_avt: Number(r.kwh_avt), kwh_ant: Number(r.kwh_ant), amount: Number(r.amount), billed: Number(r.billed), amount_ppee: Number(r.amount_ppee) });
+      const mk = monthKey(r.month);
+      monthSet.add(mk);
+      m.rows.push({ month: mk, address: String(r.address).trim(), cat: catOf(r.category), meter_no: String(r.meter_no), kwh: Number(r.kwh), kwh_avt: Number(r.kwh_avt), kwh_ant: Number(r.kwh_ant), amount: Number(r.amount), billed: Number(r.billed), amount_ppee: Number(r.amount_ppee) });
     }
+    const totalDays = [...monthSet].reduce((s, k) => s + daysIn(k), 0);
     const out = [];
     for (const m of per.values()) {
       m.rows.sort((a, b) => a.month < b.month ? -1 : 1);
       const last = m.rows[m.rows.length - 1];
       const base = { meter: m.id, address: last.address, area: areaOf(last.address), cat: last.cat, cat_label: catLabel[last.cat], meter_no: last.meter_no };
       for (const r of m.rows) {
-        out.push({ ...base, month: r.month, months: 1, kwh: round(r.kwh, 2), kwh_avt: round(r.kwh_avt, 2), kwh_ant: round(r.kwh_ant, 2), kwh_other: round(Math.max(0, r.kwh - r.kwh_avt - r.kwh_ant), 2), billed: round(r.billed, 2), amount_ppee: round(r.amount_ppee, 2),
+        const days = daysIn(r.month);
+        out.push({ ...base, month: r.month, months: 1, kwh: round(r.kwh, 2), kwh_day: round(r.kwh / days, 2), kwh_avt: round(r.kwh_avt, 2), kwh_ant: round(r.kwh_ant, 2), kwh_other: round(Math.max(0, r.kwh - r.kwh_avt - r.kwh_ant), 2),
+          billed: round(r.billed, 2), billed_day: round(r.billed / days, 2), amount_ppee: round(r.amount_ppee, 2),
           price: r.kwh > 0 ? round(r.amount / r.kwh, 4) : null, avt_share: r.kwh_avt + r.kwh_ant > 0 ? round(r.kwh_avt / (r.kwh_avt + r.kwh_ant), 4) : null,
           zero_months: r.kwh === 0 ? 1 : 0, spike: null, flags: r.kwh === 0 ? 'Нула потрошувачка' : '' });
       }
@@ -408,7 +606,8 @@ dash.calc('meters', {
       if (spike != null && spike > 2.5) flags.push('Нагол скок');
       if (base.cat === 'ulicno' && avtShare != null && avtShare > 0.5) flags.push('Висок удел на АВТ');
       if (m.rows.length < 12) flags.push('Нецелосни податоци');
-      out.push({ ...base, month: 'all', months: m.rows.length, kwh: round(kwh, 2), kwh_avt: round(avt, 2), kwh_ant: round(ant, 2), kwh_other: round(Math.max(0, kwh - avt - ant), 2), billed: round(sum('billed'), 2), amount_ppee: round(sum('amount_ppee'), 2),
+      out.push({ ...base, month: 'all', months: m.rows.length, kwh: round(kwh, 2), kwh_day: round(kwh / totalDays, 2), kwh_avt: round(avt, 2), kwh_ant: round(ant, 2), kwh_other: round(Math.max(0, kwh - avt - ant), 2),
+        billed: round(sum('billed'), 2), billed_day: round(sum('billed') / totalDays, 2), amount_ppee: round(sum('amount_ppee'), 2),
         price: kwh > 0 ? round(sum('amount') / kwh, 4) : null, avt_share: avtShare, zero_months: zero, spike, flags: flags.join(', ') });
     }
     return out;
@@ -418,7 +617,7 @@ dash.calc('meters', {
 dash.calc('pareto', {
   inputs: ['meters'],
   title: 'Кумулативен удел по мерно место',
-  description: 'Мерните места подредени по фактурирано за 12 месеци, со кумулативен удел, за секоја категорија и подрачје (и „all“).',
+  description: 'Мерните места подредени по kWh или по фактурирано за 12 месеци, со кумулативен удел, за секоја категорија и подрачје (и „all“).',
   fn: (meters) => {
     const year = meters.filter((r) => r.month === 'all');
     const groups = new Map();
@@ -430,10 +629,40 @@ dash.calc('pareto', {
     const out = [];
     for (const [k, rs] of groups) {
       const [cat, area] = k.split('|');
-      rs.sort((a, b) => b.billed - a.billed);
-      const total = rs.reduce((s, r) => s + r.billed, 0);
-      let cum = 0;
-      rs.forEach((r, i) => { cum += r.billed; out.push({ cat, area, rank: i + 1, meter: r.meter, address: r.address, billed: r.billed, cum_share: total > 0 ? Math.round(cum / total * 10000) / 10000 : null }); });
+      for (const measure of ['kwh', 'billed']) {
+        const sorted = [...rs].sort((a, b) => b[measure] - a[measure]);
+        const total = sorted.reduce((s, r) => s + r[measure], 0);
+        let cum = 0;
+        sorted.forEach((r, i) => { cum += r[measure]; out.push({ measure, cat, area, rank: i + 1, meter: r.meter, address: r.address, value: r[measure], cum_share: total > 0 ? Math.round(cum / total * 10000) / 10000 : null }); });
+      }
+    }
+    return out;
+  },
+});
+
+dash.calc('pairs', {
+  inputs: ['cube'],
+  title: 'Споредба на два месеци',
+  description: 'За секој пар месеци (a пред b) и секоја категорија и подрачје: kWh, kWh по ден и фактурирано во двата месеци и нивната разлика (b − a).',
+  fn: (cube) => {
+    const rows = cube.filter((r) => r.month !== 'all');
+    const months = [...new Set(rows.map((r) => r.month))].sort();
+    const by = new Map(rows.map((r) => [r.month + '|' + r.cat + '|' + r.area, r]));
+    const groups = [...new Set(rows.map((r) => r.cat + '|' + r.area))];
+    const r2 = (v) => Math.round(v * 100) / 100;
+    const out = [];
+    for (let i = 0; i < months.length; i++) for (let j = i + 1; j < months.length; j++) {
+      for (const g of groups) {
+        const A = by.get(months[i] + '|' + g), B = by.get(months[j] + '|' + g);
+        if (!A && !B) continue;
+        const [cat, area] = g.split('|');
+        const row = { a: months[i], b: months[j], cat, area };
+        for (const f of ['kwh', 'kwh_day', 'billed', 'billed_day']) {
+          const va = A ? A[f] : 0, vb = B ? B[f] : 0;
+          row[f + '_a'] = va; row[f + '_b'] = vb; row[f + '_diff'] = r2(vb - va);
+        }
+        out.push(row);
+      }
     }
     return out;
   },
@@ -454,6 +683,123 @@ dash.calc('savings', {
   },
 });
 
+dash.calc('sun', {
+  inputs: ['items'],
+  title: 'Изгрејсонце и зајдисонце – Кичево',
+  description: 'За секој ден од месеците во фактурите: изгрејсонце и зајдисонце за Кичево (41,5127° С, 20,9589° И) по формулата на NOAA, во локално време со летно сметање на времето, во часови (6,5 = 06:30).',
+  fn: (items) => {
+    const names = { 'Јануари': '01', 'Февруари': '02', 'Март': '03', 'Април': '04', 'Мај': '05', 'Јуни': '06', 'Јули': '07', 'Август': '08', 'Септември': '09', 'Октомври': '10', 'Ноември': '11', 'Декември': '12' };
+    const monthKey = (m) => { const [n, y] = String(m).trim().split(/\s+/); return y + '-' + names[n]; };
+    const keys = [...new Set(items.map((r) => monthKey(r.month)))].sort();
+    const lat = 41.5127, lon = 20.9589, rad = Math.PI / 180;
+    const lastSunday = (y, m0) => { const d = new Date(Date.UTC(y, m0 + 1, 0)); return d.getUTCDate() - d.getUTCDay(); };
+    const round = (v) => Math.round(v * 1000) / 1000;
+    const out = [];
+    for (const k of keys) {
+      const [y, m] = k.split('-').map(Number);
+      const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      for (let d = 1; d <= days; d++) {
+        const date = new Date(Date.UTC(y, m - 1, d));
+        const N = Math.round((date - Date.UTC(y, 0, 1)) / 864e5) + 1;
+        const g = 2 * Math.PI / ((y % 4 === 0) ? 366 : 365) * (N - 1);
+        const eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+        const dec = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+        const ha = Math.acos(Math.cos(90.833 * rad) / (Math.cos(lat * rad) * Math.cos(dec)) - Math.tan(lat * rad) * Math.tan(dec)) / rad;
+        const dst = (m > 3 && m < 10) || (m === 3 && d >= lastSunday(y, 2)) || (m === 10 && d < lastSunday(y, 9));
+        const tz = dst ? 2 : 1;
+        const sunrise = (720 - 4 * (lon + ha) - eq) / 60 + tz;
+        const sunset = (720 - 4 * (lon - ha) - eq) / 60 + tz;
+        out.push({ date: k + '-' + String(d).padStart(2, '0'), month: k, day: d, dow: date.getUTCDay(), utc_offset: tz, sunrise: round(sunrise), sunset: round(sunset), daylight: round(sunset - sunrise), night: round(24 - (sunset - sunrise)) });
+      }
+    }
+    return out;
+  },
+});
+
+dash.calc('timer', {
+  inputs: ['sun'],
+  title: 'Часови на работа според часовникот',
+  description: 'За секое сценарио (поместување при вклучување и исклучување во минути и ноќен режим) и месец: часови вклучено, од нив во нижа тарифа (22–07 и недела) и еквивалентни часови со полна моќност.',
+  fn: (sun) => {
+    const ons = [-15, 0, 10, 20, 30], offs = [-15, 0, 10, 20, 30];
+    const dims = { none: { f: 1, w: [] }, d70: { f: 0.7, w: [[23, 24], [0, 5]] }, d50: { f: 0.5, w: [[0, 5]] }, off15: { f: 0, w: [[1, 5]] } };
+    const ov = (a, b, c, d) => Math.max(0, Math.min(b, d) - Math.max(a, c));
+    const lowOv = (s, e, sunday) => sunday ? e - s : ov(s, e, 0, 7) + ov(s, e, 22, 24);
+    const acc = new Map();
+    for (const day of sun) {
+      const sunday = day.dow === 0;
+      for (const on of ons) for (const off of offs) for (const [dk, dm] of Object.entries(dims)) {
+        const segs = [[0, Math.max(0, day.sunrise - off / 60)], [Math.min(24, day.sunset + on / 60), 24]];
+        let h = 0, low = 0, eq = 0, eqLow = 0;
+        for (const [s, e] of segs) {
+          if (e <= s) continue;
+          const t = e - s, l = lowOv(s, e, sunday);
+          let dimT = 0, dimL = 0;
+          for (const [ws, we] of dm.w) { const a = Math.max(s, ws), b = Math.min(e, we); if (b > a) { dimT += b - a; dimL += lowOv(a, b, sunday); } }
+          h += t; low += l; eq += t - (1 - dm.f) * dimT; eqLow += l - (1 - dm.f) * dimL;
+        }
+        const scen = on + '|' + off + '|' + dk;
+        for (const month of [day.month, 'all']) {
+          const k = scen + '|' + month;
+          let g = acc.get(k);
+          if (!g) { g = { scen, on, off, dim: dk, month, hours: 0, hours_low: 0, eq_hours: 0, eq_low: 0 }; acc.set(k, g); }
+          g.hours += h; g.hours_low += low; g.eq_hours += eq; g.eq_low += eqLow;
+        }
+      }
+    }
+    const r2 = (v) => Math.round(v * 100) / 100;
+    return [...acc.values()].map((g) => ({ ...g, hours: r2(g.hours), hours_low: r2(g.hours_low), eq_hours: r2(g.eq_hours), eq_low: r2(g.eq_low), eq_high: r2(g.eq_hours - g.eq_low) }));
+  },
+});
+
+dash.calc('timer_kwh', {
+  inputs: ['cube', 'timer'],
+  title: 'Улично осветлување: реално наспроти часовник',
+  description: 'За уличното осветлување по подрачје и месец: проценета моќност (kWh во АНТ ÷ ноќни часови во нижа тарифа), очекувани kWh од зајдисонце до изгрејсонце и со секое сценарио на часовникот, и заштедата по фактурираната цена.',
+  fn: (cube, timer) => {
+    const names = { '01': 'Јануари', '02': 'Февруари', '03': 'Март', '04': 'Април', '05': 'Мај', '06': 'Јуни', '07': 'Јули', '08': 'Август', '09': 'Септември', '10': 'Октомври', '11': 'Ноември', '12': 'Декември' };
+    const label = (m) => m === 'all' ? 'Сите 12 месеци' : names[m.slice(5)] + ' ' + m.slice(0, 4);
+    const r0 = (v) => Math.round(v), r2 = (v) => Math.round(v * 100) / 100;
+    const astro = new Map(timer.filter((t) => t.scen === '0|0|none').map((t) => [t.month, t]));
+    const byMonth = new Map();
+    for (const r of cube) {
+      if (r.cat !== 'ulicno' || r.month === 'all' || r.area === 'all') continue;
+      const a = astro.get(r.month);
+      const power = a && a.hours_low > 0 ? r.kwh_ant / a.hours_low : 0;
+      const b = { area: r.area, month: r.month, kwh: r.kwh, price: r.kwh > 0 ? r.billed / r.kwh : 0, power, night: a ? a.hours : 0, astro: power * (a ? a.eq_hours : 0) };
+      if (!byMonth.has(r.month)) byMonth.set(r.month, []);
+      byMonth.get(r.month).push(b);
+    }
+    const monthRows = [];
+    for (const t of timer) {
+      if (t.month === 'all') continue;
+      const bs = byMonth.get(t.month) || [];
+      const tot = { scen: t.scen, area: 'all', month: t.month, night: bs.length ? bs[0].night : 0, hours: t.hours, power: 0, kwh: 0, astro: 0, timer: 0, den: 0 };
+      for (const b of bs) {
+        const kt = b.power * t.eq_hours;
+        const row = { scen: t.scen, area: b.area, month: t.month, night: b.night, hours: t.hours, power: b.power, kwh: b.kwh, astro: b.astro, timer: kt, den: (b.kwh - kt) * b.price };
+        monthRows.push(row);
+        tot.power += row.power; tot.kwh += row.kwh; tot.astro += row.astro; tot.timer += row.timer; tot.den += row.den;
+      }
+      if (bs.length) monthRows.push(tot);
+    }
+    const years = new Map();
+    for (const r of monthRows) {
+      const k = r.scen + '|' + r.area;
+      let y = years.get(k);
+      if (!y) { y = { scen: r.scen, area: r.area, month: 'all', n: 0, night: 0, hours: 0, power: 0, kwh: 0, astro: 0, timer: 0, den: 0 }; years.set(k, y); }
+      y.n += 1; y.night += r.night; y.hours += r.hours; y.power += r.power; y.kwh += r.kwh; y.astro += r.astro; y.timer += r.timer; y.den += r.den;
+    }
+    const fin = (r, power) => {
+      const saved = r.kwh - r.timer;
+      return { id: r.scen + '|' + r.area + '|' + r.month, scen: r.scen, area: r.area, month: r.month, month_label: label(r.month),
+        night_hours: r2(r.night), timer_hours: r2(r.hours), power_kw: r2(power), kwh_actual: r2(r.kwh), kwh_astro: r0(r.astro), kwh_timer: r0(r.timer),
+        saved_kwh: r0(saved), saved_den: r0(r.den), saved_share: r.kwh > 0 ? Math.round(saved / r.kwh * 10000) / 10000 : null };
+    };
+    return monthRows.map((r) => fin(r, r.power)).concat([...years.values()].map((y) => fin(y, y.power / y.n)));
+  },
+});
+
 /* ---------- помошни ---------- */
 const MONTHS = ['2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
 const MNAME = { '01': 'Јануари', '02': 'Февруари', '03': 'Март', '04': 'Април', '05': 'Мај', '06': 'Јуни', '07': 'Јули', '08': 'Август', '09': 'Септември', '10': 'Октомври', '11': 'Ноември', '12': 'Декември' };
@@ -465,16 +811,26 @@ const f0 = nf(0), f1 = nf(1), f2 = nf(2);
 const big = (v) => v == null ? '—' : Math.abs(v) >= 1e6 ? f2.format(v / 1e6) + ' мил.' : f0.format(v);
 const pct = (v, d = 1) => v == null ? '—' : nf(d).format(v * 100) + ' %';
 const sgn = (v) => v == null ? '' : (v > 0 ? '+' : v < 0 ? '−' : '±') + nf(1).format(Math.abs(v * 100)) + ' %';
-const axisFmt = (v) => Math.abs(v) >= 1e6 ? f1.format(v / 1e6) + ' мил.' : Math.abs(v) >= 1e3 ? f0.format(v / 1e3) + ' илј.' : f1.format(v).replace(/,0$/, '');
+const num = (v) => v == null ? '—' : Math.abs(v) < 100 ? f1.format(v) : f0.format(v);
+const sgnNum = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±') + num(Math.abs(v));
+const axisFmt = (v) => Math.abs(v) >= 1e6 ? f1.format(v / 1e6) + ' мил.' : Math.abs(v) >= 1e4 ? f0.format(v / 1e3) + ' илј.' : Math.abs(v) >= 100 ? f0.format(v) : f1.format(v).replace(/,0$/, '');
+const hm = (h) => { let m = Math.round((((h % 24) + 24) % 24) * 60); if (m === 1440) m = 0; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+const dur = (h) => { const m = Math.round(h * 60); return Math.floor(m / 60) + ' ч ' + String(m % 60).padStart(2, '0') + ' мин'; };
 const CAT = { all: 'Сите категории', ulicno: 'Улично (LV1.1)', objekti: 'Објекти (LV2)' };
 const enc = (s) => encodeURIComponent(s);
 const where = (o) => Object.entries(o).map(([k, v]) => enc(k) + '=' + enc(v)).join('&');
-const color = (i) => dash.colors[i];
+const color = (i) => dash.colors[i % dash.colors.length];
+const MEAS = {
+  kwh: { field: 'kwh', day: 'kwh_day', meter: 'kwh_meter', unit: 'kWh', name: 'Потрошувачка', fmt: (v) => f0.format(v) + ' kWh', title: 'Месечна потрошувачка (kWh)' },
+  billed: { field: 'billed', day: 'billed_day', meter: 'billed_meter', unit: 'ден.', name: 'Фактурирано', fmt: (v) => f0.format(v) + ' ден.', title: 'Месечна сметка (фактурирано, ден.)' },
+};
 
-const P = () => { const p = dash.params(); return { month: p.month || 'all', cat: p.cat || 'all', area: p.area || 'all' }; };
+const P = () => { const p = dash.params(); return { month: p.month || 'all', cat: p.cat || 'all', area: p.area || 'all', measure: p.measure === 'billed' ? 'billed' : 'kwh' }; };
 const setText = (el, t) => { el.textContent = t; el.classList.remove('dash-skeleton'); };
-const fail = (el) => { el.classList.remove('dash-skeleton'); el.replaceChildren(); const d = document.createElement('div'); d.className = 'kc-fail'; d.textContent = 'Failed to load'; el.append(d); };
+const fail = (el) => { el.classList.remove('dash-skeleton'); el.querySelector(':scope > .kc-plot')?.remove(); if (!el.querySelector(':scope > .kc-fail')) { const d = document.createElement('div'); d.className = 'kc-fail'; d.textContent = 'Failed to load'; el.append(d); } };
 const pending = (el) => { el.classList.add('dash-skeleton'); };
+const clearChart = (el) => { el.querySelector(':scope > .kc-plot')?.replaceChildren(); el.classList.remove('dash-skeleton'); };
+const statusOf = (...ds) => ds.some((d) => d.status === 'error') ? 'error' : ds.every((d) => d.status === 'ok') ? 'ok' : 'loading';
 
 function tipFor(box) {
   let t = box.querySelector(':scope > .kc-tip');
@@ -502,13 +858,13 @@ function tipFor(box) {
   };
 }
 
-function svgIn(box, H) {
+function svgIn(box, H, Wfix) {
+  box.querySelector(':scope > .kc-fail')?.remove();
   let plot = box.querySelector(':scope > .kc-plot');
   if (!plot) { plot = document.createElement('div'); plot.className = 'kc-plot'; box.prepend(plot); }
   plot.replaceChildren();
   box.classList.remove('dash-skeleton');
-  box.querySelector(':scope > .kc-fail')?.remove();
-  const W = Math.max(280, Math.floor(box.clientWidth || 600));
+  const W = Wfix || Math.max(280, Math.floor(box.clientWidth || 600));
   const svg = d3.select(plot).append('svg').attr('class', 'kc-svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img');
   return { svg, W, H };
 }
@@ -532,28 +888,35 @@ function xLabels(svg, x, keys, label, yPos) {
   keys.forEach((k, i) => { if (i % step === 0) svg.append('text').attr('x', x(k) + x.bandwidth() / 2).attr('y', yPos).attr('text-anchor', 'middle').text(label(k)); });
 }
 
-/* Вертикални (по потреба наслагани) столбови по месец */
+/* Вертикални столбови по месец: наслагани или групирани */
 function monthBars(box, data, o) {
   const H = o.height;
   const { svg, W } = svgIn(box, H);
   const tip = tipFor(box);
-  const max = d3.max(data, (d) => d3.sum(d.parts, (p) => p.v)) || 1;
+  const max = (o.grouped ? d3.max(data, (d) => d3.max(d.parts, (p) => p.v)) : d3.max(data, (d) => d3.sum(d.parts, (p) => Math.max(0, p.v)))) || 1;
   const y = d3.scaleLinear([0, max], [H - 22, 10]).nice();
   const ticks = y.ticks(4);
   const ml = measure(svg, ticks.map(axisFmt)) + 10;
-  const x = d3.scaleBand(data.map((d) => d.key), [ml, W - 4]).padding(0.28);
+  const x = d3.scaleBand(data.map((d) => d.key), [ml, W - 4]).padding(0.25);
   yAxis(svg, y, ticks, axisFmt, ml, W - 4);
   svg.append('line').attr('class', 'kc-axis').attr('x1', ml).attr('x2', W - 4).attr('y1', y(0)).attr('y2', y(0));
-  const bw = Math.min(32, x.bandwidth());
   for (const d of data) {
-    let acc = 0;
-    const cx = x(d.key) + (x.bandwidth() - bw) / 2;
-    d.parts.forEach((p, i) => {
-      const top = y(acc + p.v), h = y(acc) - top;
-      svg.append('rect').attr('x', cx).attr('y', top).attr('width', bw).attr('height', Math.max(0, h)).attr('rx', i === d.parts.length - 1 ? 4 : 1)
-        .attr('fill', p.color).attr('opacity', d.dim ? 0.35 : 1);
-      acc += p.v;
-    });
+    if (o.grouped) {
+      const n = d.parts.length, gw = Math.min(x.bandwidth(), 24 * n + 3 * (n - 1)), bw = (gw - 3 * (n - 1)) / n;
+      d.parts.forEach((p, i) => {
+        const v = Math.max(0, p.v), bx = x(d.key) + (x.bandwidth() - gw) / 2 + i * (bw + 3);
+        svg.append('rect').attr('x', bx).attr('y', y(v)).attr('width', bw).attr('height', Math.max(0, y(0) - y(v))).attr('rx', 3).attr('fill', p.color).attr('opacity', d.dim ? 0.35 : 1);
+      });
+    } else {
+      const bw = Math.min(32, x.bandwidth());
+      let acc = 0;
+      const cx = x(d.key) + (x.bandwidth() - bw) / 2;
+      d.parts.forEach((p, i) => {
+        const v = Math.max(0, p.v), top = y(acc + v), h = y(acc) - top;
+        svg.append('rect').attr('x', cx).attr('y', top).attr('width', bw).attr('height', Math.max(0, h)).attr('rx', i === d.parts.length - 1 ? 4 : 1).attr('fill', p.color).attr('opacity', d.dim ? 0.35 : 1);
+        acc += v;
+      });
+    }
   }
   xLabels(svg, x, data.map((d) => d.key), shortM, H - 4);
   for (const d of data) {
@@ -570,15 +933,15 @@ function monthLines(box, series, o) {
   const { svg, W } = svgIn(box, H);
   const tip = tipFor(box);
   const vals = series.flatMap((s) => s.points.map((p) => p.v)).filter((v) => v != null);
+  if (!vals.length) return;
   const lo = o.zero ? 0 : d3.min(vals), hi = d3.max(vals);
   const pad = o.zero ? 0 : (hi - lo) * 0.15 || 0.5;
-  const y = d3.scaleLinear([lo - pad, hi + pad], [H - 22, 10]).nice();
+  const y = d3.scaleLinear([lo - pad, (hi + pad) || 1], [H - 22, 10]).nice();
   const ticks = y.ticks(4);
-  const ml = measure(svg, ticks.map(o.fmt)) + 10;
-  const x = d3.scalePoint(MONTHS, [ml + 10, W - 14]);
-  yAxis(svg, y, ticks, o.fmt, ml, W - 4);
-  if (o.ref != null) svg.append('line').attr('class', 'kc-ref').attr('x1', ml).attr('x2', W - 4).attr('y1', y(o.ref)).attr('y2', y(o.ref));
+  const ml = measure(svg, ticks.map(o.axis || o.fmt)) + 10;
   const xb = d3.scaleBand(MONTHS, [ml, W - 4]);
+  const x = (k) => xb(k) + xb.bandwidth() / 2;
+  yAxis(svg, y, ticks, o.axis || o.fmt, ml, W - 4);
   xLabels(svg, xb, MONTHS, shortM, H - 4);
   const line = d3.line().defined((p) => p.v != null).x((p) => x(p.k)).y((p) => y(p.v));
   series.forEach((s) => {
@@ -594,21 +957,25 @@ function monthLines(box, series, o) {
   }
 }
 
-/* Хоризонтални столбови */
+/* Хоризонтални столбови, и со негативни вредности */
 function hBars(box, data, o) {
-  const row = 26, H = data.length * row + 8;
+  const row = 26, H = Math.max(1, data.length) * row + 8;
   box.style.minHeight = H + 'px';
   const { svg, W } = svgIn(box, H);
   const tip = tipFor(box);
-  const lw = Math.min(W * 0.38, measure(svg, data.map((d) => d.label)) + 10);
-  const vw = measure(svg, data.map((d) => o.fmt(d.value))) + 8;
-  const x = d3.scaleLinear([0, d3.max(data, (d) => d.value) || 1], [lw, W - vw]);
+  const lw = Math.min(W * 0.36, measure(svg, data.map((d) => d.label)) + 10);
+  const vw = measure(svg, data.map((d) => o.fmt(d.value))) + 10;
+  const lo = Math.min(0, d3.min(data, (d) => d.value) || 0), hi = Math.max(0, d3.max(data, (d) => d.value) || 0);
+  const x = d3.scaleLinear([lo, hi || (lo ? 0 : 1)], [lw + (lo < 0 ? vw : 0), W - (hi > 0 || !lo ? vw : 6)]);
+  if (lo < 0) svg.append('line').attr('class', 'kc-axis').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 0).attr('y2', H);
   data.forEach((d, i) => {
     const yy = i * row + 4;
+    const x0 = x(Math.min(0, d.value)), x1 = x(Math.max(0, d.value));
     svg.append('text').attr('x', lw - 8).attr('y', yy + row / 2 - 2).attr('dy', '0.32em').attr('text-anchor', 'end').text(d.label);
-    svg.append('rect').attr('x', lw).attr('y', yy + 4).attr('height', row - 12).attr('width', Math.max(2, x(d.value) - lw)).attr('rx', 4)
-      .attr('fill', d.active ? color(0) : 'var(--cds-chart-muted)');
-    svg.append('text').attr('class', 'kc-val').attr('x', x(d.value) + 6).attr('y', yy + row / 2 - 2).attr('dy', '0.32em').text(o.fmt(d.value));
+    svg.append('rect').attr('x', x0).attr('y', yy + 4).attr('height', row - 12).attr('width', Math.max(2, x1 - x0)).attr('rx', 4)
+      .attr('fill', d.fill || (d.active ? color(0) : 'var(--cds-chart-muted)'));
+    const neg = d.value < 0;
+    svg.append('text').attr('class', 'kc-val').attr('x', neg ? x0 - 6 : x1 + 6).attr('text-anchor', neg ? 'end' : 'start').attr('y', yy + row / 2 - 2).attr('dy', '0.32em').text(o.fmt(d.value));
     svg.append('rect').attr('class', 'kc-hit').attr('x', 0).attr('y', yy).attr('width', W).attr('height', row)
       .on('mousemove', (ev) => tip.show(ev, d.label, d.lines))
       .on('mouseleave', () => tip.hide())
@@ -636,19 +1003,30 @@ function spark(values) {
   return svg;
 }
 
-function chips(td, flags) {
-  td.replaceChildren();
+function chips(cell, flags) {
+  cell.replaceChildren();
   if (!flags) return;
   flags.split(', ').forEach((f, i) => {
-    if (i) { const s = document.createElement('span'); s.className = 'kc-sep'; s.textContent = ', '; td.append(s); }
-    const c = document.createElement('span'); c.className = 'kc-chip' + (f === 'Нула потрошувачка' || f === 'Нагол скок' ? ' kc-bad' : ''); c.textContent = f; td.append(c);
+    if (i) { const s = document.createElement('span'); s.className = 'kc-sep'; s.textContent = ', '; cell.append(s); }
+    const c = document.createElement('span'); c.className = 'kc-chip' + (f === 'Нула потрошувачка' || f === 'Нагол скок' ? ' kc-bad' : ''); c.textContent = f; cell.append(c);
   });
+}
+function td(text, cls) { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; return c; }
+function thSpan(text, cls) { const th = document.createElement('th'); if (cls) th.className = cls; const s = document.createElement('span'); s.className = 'kc-th'; s.textContent = text; th.append(s); return th; }
+function markB(source, field, w, text) {
+  const s = document.createElement('b');
+  s.setAttribute('data-source', source); s.setAttribute('data-field', field); s.setAttribute('data-where', where(w)); s.textContent = text;
+  return s;
 }
 
 /* ---------- состојба на страницата ---------- */
-const st = { tab: 'pregled', metric: 'billed', sort: { key: 'billed', dir: -1 }, asort: { key: 'billed', dir: -1 }, q: '', sel: null, pct: 40 };
+const st = {
+  tab: 'pregled', sort: { key: 'kwh', dir: -1 }, asort: { key: 'kwh', dir: -1 }, q: '', sel: null, pct: 40,
+  cmpDim: 'area', cmpNorm: 'total', cmpAreas: null, cmpMeters: null,
+  mvmA: '2025-07', mvmB: '2026-01', mvmBasis: 'day',
+  tOn: 10, tOff: 10, tDim: 'd50',
+};
 
-/* табови */
 const tabs = [...document.querySelectorAll('.kc-tab')];
 function showTab(id, link) {
   st.tab = id;
@@ -659,18 +1037,52 @@ function showTab(id, link) {
 }
 tabs.forEach((t) => t.addEventListener('click', () => showTab(t.getAttribute('aria-controls'), true)));
 
-/* филтри */
+function segGroup(el, get, set) {
+  const btns = [...el.querySelectorAll('button')];
+  btns.forEach((b) => b.addEventListener('click', () => set(b.dataset.v)));
+  return () => btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === get())));
+}
+
 const fMonth = document.getElementById('f-month'), fCat = document.getElementById('f-cat'), fArea = document.getElementById('f-area');
+fMonth.replaceChildren(new Option('Сите 12 месеци', 'all'), ...MONTHS.map((k) => new Option(longM(k), k)));
 fMonth.addEventListener('change', () => dash.setParams({ month: fMonth.value }));
 fCat.addEventListener('change', () => dash.setParams({ cat: fCat.value }));
 fArea.addEventListener('change', () => dash.setParams({ area: fArea.value }));
 document.getElementById('f-reset').addEventListener('click', () => { dash.resetParams(); });
+const syncMeasure = segGroup(document.getElementById('f-measure'), () => P().measure, (v) => {
+  st.sort = { key: v, dir: -1 }; st.asort = { key: v, dir: -1 };
+  dash.setParams({ measure: v });
+});
 
-document.querySelectorAll('.kc-seg button').forEach((b) => b.addEventListener('click', () => {
-  st.metric = b.dataset.metric;
-  document.querySelectorAll('.kc-seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+const syncDim = segGroup(document.getElementById('cmp-dim'), () => st.cmpDim, (v) => { st.cmpDim = v; if (v === 'meter' && st.cmpNorm === 'meter') st.cmpNorm = 'total'; draw(); });
+const syncNorm = segGroup(document.getElementById('cmp-norm'), () => st.cmpNorm, (v) => { st.cmpNorm = v; draw(); });
+const syncBasis = segGroup(document.getElementById('mvm-basis'), () => st.mvmBasis, (v) => { st.mvmBasis = v; draw(); });
+const cmpAdd = document.getElementById('cmp-add');
+cmpAdd.addEventListener('change', () => {
+  const v = cmpAdd.value; if (!v) return;
+  const list = st.cmpDim === 'area' ? st.cmpAreas : st.cmpMeters;
+  if (list && !list.includes(v) && list.length < 6) list.push(v);
   draw();
-}));
+});
+document.getElementById('cmp-chips').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-id]'); if (!b) return;
+  const list = st.cmpDim === 'area' ? st.cmpAreas : st.cmpMeters;
+  const i = list ? list.indexOf(b.dataset.id) : -1; if (i >= 0) list.splice(i, 1);
+  draw();
+});
+const mvmA = document.getElementById('mvm-a'), mvmB = document.getElementById('mvm-b');
+mvmA.replaceChildren(...MONTHS.map((k) => new Option(longM(k), k)));
+mvmB.replaceChildren(...MONTHS.map((k) => new Option(longM(k), k)));
+mvmA.addEventListener('change', () => { st.mvmA = mvmA.value; draw(); });
+mvmB.addEventListener('change', () => { st.mvmB = mvmB.value; draw(); });
+
+const tOn = document.getElementById('t-on'), tOff = document.getElementById('t-off'), tDim = document.getElementById('t-dim');
+tOn.addEventListener('change', () => { st.tOn = Number(tOn.value); draw(); });
+tOff.addEventListener('change', () => { st.tOff = Number(tOff.value); draw(); });
+tDim.addEventListener('change', () => { st.tDim = tDim.value; draw(); });
+/* прозорци на ноќниот режим во часови од почетокот на вечерта (24 = полноќ, 29 = 05:00) */
+const DIMWIN = { none: [], d70: [[23, 29]], d50: [[24, 29]], off15: [[25, 29]] };
+const DIMF = { none: 1, d70: 0.7, d50: 0.5, off15: 0 };
 
 document.getElementById('t-search').addEventListener('input', (e) => { st.q = e.target.value.trim().toLowerCase(); draw(); });
 function sortable(table, key) {
@@ -690,6 +1102,13 @@ function pick(ev) {
   document.getElementById('karta-detal').scrollIntoView({ block: 'nearest' });
 }
 tMeters.addEventListener('click', pick); tAnom.addEventListener('click', pick);
+document.getElementById('d-cmp').addEventListener('click', () => {
+  if (!st.sel) return;
+  if (!st.cmpMeters) st.cmpMeters = [];
+  if (!st.cmpMeters.includes(st.sel)) { if (st.cmpMeters.length >= 6) st.cmpMeters.shift(); st.cmpMeters.push(st.sel); }
+  st.cmpDim = 'meter'; if (st.cmpNorm === 'meter') st.cmpNorm = 'total';
+  showTab('sporedba', true);
+});
 
 const sPct = document.getElementById('s-pct');
 sPct.addEventListener('input', () => { st.pct = Number(sPct.value); draw(); });
@@ -697,43 +1116,45 @@ sPct.addEventListener('input', () => { st.pct = Number(sPct.value); draw(); });
 /* ---------- цртање ---------- */
 function draw() {
   const p = P();
-  const cube = dash.data('cube'), meters = dash.data('meters'), pareto = dash.data('pareto'), savings = dash.data('savings');
-
-  /* контроли */
+  const cube = dash.data('cube');
   if (cube.status === 'ok') {
-    const opts = [new Option('Сите 12 месеци', 'all'), ...MONTHS.map((k) => new Option(longM(k), k))];
-    if (fMonth.options.length !== opts.length) fMonth.replaceChildren(...opts);
-    const areas = cube.data.filter((r) => r.month === 'all' && r.cat === 'all' && r.area !== 'all').sort((a, b) => b.billed - a.billed);
+    const areas = cube.data.filter((r) => r.month === 'all' && r.cat === 'all' && r.area !== 'all').sort((a, b) => b.kwh - a.kwh);
     if (fArea.options.length !== areas.length + 1) fArea.replaceChildren(new Option('Сите подрачја', 'all'), ...areas.map((r) => new Option(r.area, r.area)));
   }
   fMonth.value = p.month; fCat.value = p.cat; fArea.value = p.area;
+  syncMeasure();
 
-  if (st.tab === 'pregled') drawOverview(p, cube);
-  if (st.tab === 'mesta') drawMeters(p, meters);
-  if (st.tab === 'efikasnost') drawEfficiency(p, cube, meters, pareto, savings);
   drawLede(p, cube);
+  if (st.tab === 'pregled') drawOverview(p, cube);
+  if (st.tab === 'sporedba') drawCompare(p, cube, dash.data('meters'), dash.data('pairs'));
+  if (st.tab === 'chasovnik') drawTimer(p, dash.data('sun'), dash.data('timer'), dash.data('timer_kwh'));
+  if (st.tab === 'mesta') drawMeters(p, dash.data('meters'));
+  if (st.tab === 'efikasnost') drawEfficiency(p, cube, dash.data('meters'), dash.data('pareto'), dash.data('savings'));
 }
 
 function drawLede(p, cube) {
-  const el = document.getElementById('lede-billed');
+  const el = document.getElementById('lede-kwh');
   const lede = document.getElementById('zakluchok');
   if (cube.status !== 'ok') { if (cube.status === 'error') { el.textContent = '—'; el.classList.remove('dash-skeleton'); } return; }
   const all = cube.data.find((r) => r.month === 'all' && r.cat === 'all' && r.area === 'all');
   const months = cube.data.filter((r) => r.month !== 'all' && r.cat === 'all' && r.area === 'all');
-  const top = months.reduce((a, b) => (b.billed > a.billed ? b : a));
-  const low = months.reduce((a, b) => (b.billed < a.billed ? b : a));
-  el.setAttribute('data-where', where({ month: 'all', cat: 'all', area: 'all' }));
-  setText(el, f0.format(all.billed) + ' ден.');
-  const mark = (r) => { const s = document.createElement('b'); s.setAttribute('data-source', 'cube'); s.setAttribute('data-field', 'billed'); s.setAttribute('data-where', where({ month: r.month, cat: 'all', area: 'all' })); s.textContent = big(r.billed) + ' ден.'; return s; };
-  lede.replaceChildren('За 12 месеци (јули 2025 – јуни 2026) јавното осветлување чинело ', el,
-    ' фактурирано. Најскап месец е ' + longM(top.month).toLowerCase() + ' со ', mark(top), ', а најевтин ' + longM(low.month).toLowerCase() + ' со ', mark(low), ': зимските ноќи се подолги, а светилките работат повеќе часови.');
+  const top = months.reduce((a, b) => (b.kwh_day > a.kwh_day ? b : a));
+  const low = months.reduce((a, b) => (b.kwh_day < a.kwh_day ? b : a));
+  setText(el, f0.format(all.kwh) + ' kWh');
+  el.style.fontWeight = 'var(--cds-font-weight-medium)'; el.style.color = 'var(--color-fg)';
+  lede.replaceChildren('За 12 месеци (јули 2025 – јуни 2026) јавното осветлување потрошило ', el, ' за ',
+    markB('cube', 'billed', { month: 'all', cat: 'all', area: 'all' }, big(all.billed) + ' ден.'),
+    ' фактурирано. Најмногу енергија по ден се троши во ' + longM(top.month).toLowerCase() + ' (', markB('cube', 'kwh_day', { month: top.month, cat: 'all', area: 'all' }, f0.format(top.kwh_day) + ' kWh/ден'),
+    '), а најмалку во ' + longM(low.month).toLowerCase() + ' (', markB('cube', 'kwh_day', { month: low.month, cat: 'all', area: 'all' }, f0.format(low.kwh_day) + ' kWh/ден'),
+    '): зимските ноќи се подолги и светилките работат повеќе часови.');
 }
 
-function kpi(id, row, field, text) {
+function kpi(id, row, text) {
   const el = document.getElementById(id);
   el.setAttribute('data-where', where({ month: row.month, cat: row.cat, area: row.area }));
   setText(el, text);
 }
+const prevKey = (m) => { let [y, n] = m.split('-').map(Number); n -= 1; if (n === 0) { n = 12; y -= 1; } return y + '-' + String(n).padStart(2, '0'); };
 function kpiDelta(id, row, field, upBad, label) {
   const el = document.getElementById(id);
   el.setAttribute('data-where', where({ month: row.month, cat: row.cat, area: row.area }));
@@ -743,33 +1164,35 @@ function kpiDelta(id, row, field, upBad, label) {
   el.textContent = sgn(v) + ' во однос на ' + longM(prevKey(row.month)).toLowerCase();
   if (v !== 0) el.classList.add((v > 0) === upBad ? 'kc-up' : 'kc-down');
 }
-const prevKey = (m) => { let [y, n] = m.split('-').map(Number); n -= 1; if (n === 0) { n = 12; y -= 1; } return y + '-' + String(n).padStart(2, '0'); };
 
 function drawOverview(p, cube) {
-  const ids = ['k-billed', 'k-kwh', 'k-price', 'k-ppee', 'k-meters'];
+  const ids = ['k-kwh', 'k-kwhday', 'k-billed', 'k-price', 'k-ppee', 'k-meters'];
   const charts = ['ch-monthly', 'ch-tariff', 'ch-price', 'ch-areas', 'ch-cats'].map((i) => document.getElementById(i));
   if (cube.status !== 'ok') {
     if (cube.status === 'error') { ids.forEach((i) => setText(document.getElementById(i), '—')); charts.forEach(fail); }
     else charts.forEach(pending);
     return;
   }
+  const M = MEAS[p.measure];
   const rows = cube.data;
   const get = (m, c, a) => rows.find((r) => r.month === m && r.cat === c && r.area === a);
   const cur = get(p.month, p.cat, p.area);
   if (!cur) {
     ids.forEach((i) => setText(document.getElementById(i), '—'));
-    charts.forEach((c) => { c.querySelector('.kc-plot')?.replaceChildren(); c.classList.remove('dash-skeleton'); });
+    charts.forEach(clearChart);
     document.getElementById('k-zero').textContent = 'Нема ставки за овој избор.';
     return;
   }
-  kpi('k-billed', cur, 'billed', big(cur.billed));
-  kpi('k-kwh', cur, 'kwh', big(cur.kwh));
-  kpi('k-price', cur, 'price', cur.price == null ? '—' : f2.format(cur.price));
-  kpi('k-ppee', cur, 'amount_ppee', big(cur.amount_ppee));
-  kpi('k-meters', cur, 'meters', f0.format(cur.meters));
+  kpi('k-kwh', cur, big(cur.kwh));
+  kpi('k-kwhday', cur, f0.format(cur.kwh_day));
+  kpi('k-billed', cur, big(cur.billed));
+  kpi('k-price', cur, cur.price == null ? '—' : f2.format(cur.price));
+  kpi('k-ppee', cur, big(cur.amount_ppee));
+  kpi('k-meters', cur, f0.format(cur.meters));
   const per = p.month === 'all' ? '12 месеци' : '';
-  kpiDelta('k-billed-d', cur, 'billed_chg', true, per);
   kpiDelta('k-kwh-d', cur, 'kwh_chg', true, per);
+  kpiDelta('k-kwhday-d', cur, 'kwh_day_chg', true, p.month === 'all' ? 'просек за 365 дена' : '');
+  kpiDelta('k-billed-d', cur, 'billed_chg', true, per);
   kpiDelta('k-price-d', cur, 'price_chg', true, per);
   const pp = document.getElementById('k-ppee-d');
   pp.setAttribute('data-where', where({ month: cur.month, cat: cur.cat, area: cur.area }));
@@ -779,58 +1202,304 @@ function drawOverview(p, cube) {
   z.textContent = cur.zero ? f0.format(cur.zero) + (p.month === 'all' ? ' месечни ставки' : ' места') + ' со 0 kWh' : 'сите со потрошувачка';
   z.classList.toggle('kc-up', cur.zero > 0);
 
-  /* месечно */
   const series = MONTHS.map((k) => get(k, p.cat, p.area)).filter(Boolean);
-  const isDen = st.metric === 'billed';
-  document.getElementById('h-mesecno').textContent = isDen ? 'Месечна сметка (фактурирано, ден.)' : 'Месечна потрошувачка (kWh)';
+  const click = (k) => dash.setParams({ month: p.month === k ? 'all' : k });
+
+  document.getElementById('h-mesecno').textContent = M.title;
+  const other = p.measure === 'kwh' ? MEAS.billed : MEAS.kwh;
   monthBars(document.getElementById('ch-monthly'), series.map((r) => ({
     key: r.month, dim: p.month !== 'all' && r.month !== p.month,
-    parts: [{ v: isDen ? r.billed : r.kwh, color: color(0), name: isDen ? 'Фактурирано' : 'Потрошувачка', fmt: (v) => f0.format(v) + (isDen ? ' ден.' : ' kWh') }],
-    extra: [[null, isDen ? 'kWh' : 'Фактурирано', isDen ? f0.format(r.kwh) + ' kWh' : f0.format(r.billed) + ' ден.'], [null, 'Мерни места', f0.format(r.meters)]],
-  })), { height: 240, onClick: (d) => dash.setParams({ month: p.month === d.key ? 'all' : d.key }) });
+    parts: [{ v: r[M.field], color: color(0), name: M.name, fmt: M.fmt }],
+    extra: [[null, other.name, other.fmt(r[other.field])], [null, 'kWh по ден', f0.format(r.kwh_day)], [null, 'Мерни места', f0.format(r.meters)]],
+  })), { height: 240, onClick: (d) => click(d.key) });
 
-  /* тарифи */
   legend(document.getElementById('lg-tariff'), [[color(0), 'АНТ – нижа тарифа'], [color(1), 'АВТ – виша тарифа'], ['var(--cds-chart-muted)', 'Неразделено']]);
   monthBars(document.getElementById('ch-tariff'), series.map((r) => ({
     key: r.month, dim: p.month !== 'all' && r.month !== p.month,
     parts: [{ v: r.kwh_ant, color: color(0), name: 'АНТ', fmt: (v) => f0.format(v) + ' kWh' }, { v: r.kwh_avt, color: color(1), name: 'АВТ', fmt: (v) => f0.format(v) + ' kWh' }, { v: r.kwh_other, color: 'var(--cds-chart-muted)', name: 'Неразделено', fmt: (v) => f0.format(v) + ' kWh' }],
     extra: [[null, 'Удел АВТ', pct(r.avt_share)]],
-  })), { height: 180, onClick: (d) => dash.setParams({ month: p.month === d.key ? 'all' : d.key }) });
+  })), { height: 180, onClick: (d) => click(d.key) });
 
-  /* цена */
   legend(document.getElementById('lg-price'), [[color(0), 'Единечна цена од фактура'], [color(2), 'Просечна (износ ÷ kWh)']]);
   monthLines(document.getElementById('ch-price'), [
     { name: 'Единечна', color: color(0), points: series.map((r) => ({ k: r.month, v: r.unit_price })) },
     { name: 'Просечна', color: color(2), points: series.map((r) => ({ k: r.month, v: r.price })) },
-  ], { height: 180, fmt: (v) => v == null ? '—' : f2.format(v), active: p.month, onClick: (k) => dash.setParams({ month: p.month === k ? 'all' : k }) });
+  ], { height: 180, fmt: (v) => v == null ? '—' : f2.format(v), active: p.month, onClick: click });
 
-  /* подрачја */
-  const areas = rows.filter((r) => r.month === p.month && r.cat === p.cat && r.area !== 'all').sort((a, b) => b.billed - a.billed);
-  const areaTotal = get(p.month, p.cat, 'all')?.billed || 1;
+  document.getElementById('h-areas').textContent = 'По подрачје (' + M.unit + ')';
+  const areas = rows.filter((r) => r.month === p.month && r.cat === p.cat && r.area !== 'all').sort((a, b) => b[M.field] - a[M.field]);
+  const areaTotal = get(p.month, p.cat, 'all')?.[M.field] || 1;
   hBars(document.getElementById('ch-areas'), areas.map((r) => ({
-    key: r.area, label: r.area, value: r.billed, active: p.area === 'all' || p.area === r.area,
-    lines: [[null, 'Фактурирано', f0.format(r.billed) + ' ден.'], [null, 'Потрошувачка', f0.format(r.kwh) + ' kWh'], [null, 'Мерни места', f0.format(r.meters)], [null, 'Удел', pct(r.billed / areaTotal)]],
+    key: r.area, label: r.area, value: r[M.field], active: p.area === 'all' || p.area === r.area,
+    lines: [[null, 'Потрошувачка', f0.format(r.kwh) + ' kWh'], [null, 'kWh по мерно место', f0.format(r.kwh_meter)], [null, 'Фактурирано', f0.format(r.billed) + ' ден.'], [null, 'Мерни места', f0.format(r.meters)], [null, 'Удел', pct(r[M.field] / areaTotal)]],
   })), { fmt: (v) => big(v), onClick: (d) => dash.setParams({ area: p.area === d.key ? 'all' : d.key }) });
 
-  /* категории */
   const box = document.getElementById('ch-cats');
   box.classList.remove('dash-skeleton');
   const tot = get(p.month, 'all', p.area);
   const parts = ['ulicno', 'objekti'].map((c) => get(p.month, c, p.area)).filter(Boolean);
-  box.replaceChildren(...parts.flatMap((r, i) => [['Фактурирано', r.billed / tot.billed, f0.format(r.billed) + ' ден.'], ['kWh', r.kwh / tot.kwh, f0.format(r.kwh) + ' kWh']].map(([lab, share, val], j) => {
+  box.replaceChildren(...parts.flatMap((r, i) => [['kWh', tot.kwh ? r.kwh / tot.kwh : 0, f0.format(r.kwh) + ' kWh'], ['Денари', tot.billed ? r.billed / tot.billed : 0, f0.format(r.billed) + ' ден.']].map(([lab, share, val], j) => {
     const row = document.createElement('div'); row.className = 'kc-split-row';
     const l = document.createElement('span'); l.textContent = j === 0 ? CAT[r.cat] : '';
     const track = document.createElement('div'); track.className = 'kc-split-track';
     const fill = document.createElement('div'); fill.className = 'kc-split-fill'; fill.style.width = (share * 100).toFixed(1) + '%'; fill.style.background = color(i); fill.style.opacity = j ? 0.55 : 1;
     track.append(fill);
     const v = document.createElement('span'); v.textContent = lab + ': ' + pct(share) + ' · ' + val;
-    row.append(l, track, v); row.style.cursor = 'pointer';
+    row.append(l, track, v);
     row.addEventListener('click', () => dash.setParams({ cat: p.cat === r.cat ? 'all' : r.cat }));
     return row;
   })));
   if (!parts.length) box.textContent = '—';
 }
 
+/* ---------- споредба ---------- */
+function drawCompare(p, cube, meters, pairs) {
+  syncDim(); syncNorm(); syncBasis();
+  document.querySelector('#cmp-norm button[data-v="meter"]').hidden = st.cmpDim === 'meter';
+  const box = document.getElementById('ch-cmp');
+  const s = statusOf(cube, meters);
+  if (s !== 'ok') { if (s === 'error') fail(box); else pending(box); }
+  else {
+    const M = MEAS[p.measure];
+    const field = st.cmpNorm === 'day' ? M.day : st.cmpNorm === 'meter' ? M.meter : M.field;
+    const unit = M.unit + (st.cmpNorm === 'day' ? '/ден' : st.cmpNorm === 'meter' ? ' по мерно место' : '');
+    let items, source;
+    if (st.cmpDim === 'area') {
+      source = 'cube';
+      const areas = cube.data.filter((r) => r.month === 'all' && r.cat === p.cat && r.area !== 'all').sort((a, b) => b.kwh - a.kwh);
+      if (!st.cmpAreas) st.cmpAreas = areas.slice(0, 4).map((r) => r.area);
+      cmpAdd.replaceChildren(new Option('+ подрачје…', ''), ...areas.filter((r) => !st.cmpAreas.includes(r.area)).map((r) => new Option(r.area, r.area)));
+      items = st.cmpAreas.map((a, i) => ({ id: a, name: a, color: color(i), rows: MONTHS.map((k) => cube.data.find((r) => r.month === k && r.cat === p.cat && r.area === a)), w: (k) => ({ month: k, cat: p.cat, area: a }) }));
+      document.getElementById('cmp-note').textContent = 'Подрачја во категоријата „' + CAT[p.cat] + '“. „По ден“ ја отстранува разликата во должината на месеците, „По мерно место“ ја отстранува разликата во бројот на мерни места.';
+    } else {
+      source = 'meters';
+      const year = meters.data.filter((r) => r.month === 'all').sort((a, b) => b.kwh - a.kwh);
+      if (!st.cmpMeters) st.cmpMeters = year.slice(0, 3).map((r) => r.meter);
+      const pool = year.filter((r) => (p.cat === 'all' || r.cat === p.cat) && (p.area === 'all' || r.area === p.area) && !st.cmpMeters.includes(r.meter));
+      cmpAdd.replaceChildren(new Option('+ мерно место…', ''), ...pool.map((r) => new Option(r.address + ' · ' + r.meter, r.meter)));
+      const info = new Map(year.map((r) => [r.meter, r]));
+      items = st.cmpMeters.map((m, i) => ({ id: m, name: (info.get(m)?.address || m) + ' · ' + m, color: color(i), rows: MONTHS.map((k) => meters.data.find((r) => r.meter === m && r.month === k)), w: (k) => ({ meter: m, month: k }) }));
+      document.getElementById('cmp-note').textContent = 'Мерни места од избраната категорија и подрачје (листата е подредена по kWh). Мерно место може да се додаде и од табелата „Мерни места“.';
+    }
+    document.getElementById('h-cmp').textContent = 'Споредба по месеци (' + unit + ')';
+    const chipsEl = document.getElementById('cmp-chips');
+    chipsEl.replaceChildren(...items.map((it) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'kc-chipbtn'; b.dataset.id = it.id; b.setAttribute('aria-label', 'Отстрани ' + it.name);
+      const sw = document.createElement('i'); sw.className = 'kc-sw'; sw.style.background = it.color;
+      b.append(sw, it.name, ' ×'); return b;
+    }));
+    if (!items.length) {
+      const n = document.createElement('span'); n.className = 'kc-count'; n.textContent = 'Додајте барем едно подрачје или мерно место.'; chipsEl.append(n);
+      clearChart(box);
+    } else {
+      monthLines(box, items.map((it) => ({ name: it.name, color: it.color, points: MONTHS.map((k, i) => ({ k, v: it.rows[i] ? it.rows[i][field] : null })) })),
+        { height: 300, zero: true, fmt: (v) => v == null ? '—' : num(v) + ' ' + unit, axis: axisFmt, active: p.month, onClick: (k) => dash.setParams({ month: p.month === k ? 'all' : k }) });
+    }
+
+    const t = document.getElementById('t-cmp');
+    const hr = document.createElement('tr');
+    hr.append(thSpan(st.cmpDim === 'area' ? 'Подрачје' : 'Мерно место'), ...MONTHS.map((k) => thSpan(shortM(k), 'kc-num')), thSpan(st.cmpNorm === 'total' ? '12 месеци' : 'Просек 12 мес.', 'kc-num'));
+    t.tHead.replaceChildren(hr);
+    const yearRow = (it) => st.cmpDim === 'area' ? cube.data.find((r) => r.month === 'all' && r.cat === p.cat && r.area === it.id) : meters.data.find((r) => r.meter === it.id && r.month === 'all');
+    const cell = (row, w) => {
+      const c = td(row ? num(row[field]) : '—', 'kc-num');
+      if (row) { c.setAttribute('data-source', source); c.setAttribute('data-field', field); c.setAttribute('data-where', where(w)); }
+      return c;
+    };
+    t.tBodies[0].replaceChildren(...items.map((it) => {
+      const tr = document.createElement('tr');
+      const name = document.createElement('td'); name.className = 'kc-addr'; name.title = it.name;
+      const sw = document.createElement('i'); sw.className = 'kc-sw'; sw.style.background = it.color; sw.style.marginRight = '6px';
+      name.append(sw, it.name);
+      tr.append(name, ...MONTHS.map((k, i) => cell(it.rows[i], it.w(k))), cell(yearRow(it), it.w('all')));
+      return tr;
+    }));
+  }
+
+  const mb = document.getElementById('ch-mvm');
+  const sum = document.getElementById('mvm-sum');
+  mvmA.value = st.mvmA; mvmB.value = st.mvmB;
+  if (pairs.status !== 'ok') { if (pairs.status === 'error') fail(mb); else pending(mb); return; }
+  if (st.mvmA === st.mvmB) { clearChart(mb); sum.textContent = 'Изберете два различни месеци.'; return; }
+  const from = st.mvmA, to = st.mvmB;
+  const swapped = from > to;
+  const a = swapped ? to : from, b = swapped ? from : to;
+  const M = MEAS[p.measure];
+  const base = st.mvmBasis === 'day' ? M.day : M.field;
+  const unit = M.unit + (st.mvmBasis === 'day' ? '/ден' : '');
+  const fromF = base + (swapped ? '_b' : '_a'), toF = base + (swapped ? '_a' : '_b');
+  const rows = pairs.data.filter((r) => r.a === a && r.b === b && r.cat === p.cat);
+  const tot = rows.find((r) => r.area === 'all');
+  document.getElementById('h-mvm').textContent = 'Месец наспроти месец: ' + longM(from) + ' → ' + longM(to);
+  document.getElementById('mvm-note').textContent = 'Промена по подрачје во ' + unit + ', категорија „' + CAT[p.cat] + '“. ' + (st.mvmBasis === 'day' ? 'Споредбата по ден ја отстранува разликата во бројот на денови.' : 'Вкупната споредба ја вклучува и разликата во бројот на денови.') + ' Црвено = раст, сино = пад.';
+  if (tot) {
+    const ch = tot[fromF] ? tot[toF] / tot[fromF] - 1 : null;
+    sum.replaceChildren('Сите подрачја: ', markB('pairs', fromF, { a, b, cat: p.cat, area: 'all' }, num(tot[fromF]) + ' ' + unit), ' во ' + longM(from).toLowerCase() + ' и ',
+      markB('pairs', toF, { a, b, cat: p.cat, area: 'all' }, num(tot[toF]) + ' ' + unit), ' во ' + longM(to).toLowerCase() + (ch == null ? '.' : ' (' + sgn(ch) + ').'));
+  } else sum.textContent = '';
+  const list = rows.filter((r) => r.area !== 'all').map((r) => ({ r, d: r[toF] - r[fromF] })).sort((x, y) => y.d - x.d);
+  hBars(mb, list.map(({ r, d }) => ({
+    key: r.area, label: r.area, value: Math.round(d * 100) / 100, fill: d > 0 ? 'var(--cds-chart-status-critical)' : color(0),
+    lines: [[null, longM(from), num(r[fromF]) + ' ' + unit], [null, longM(to), num(r[toF]) + ' ' + unit], [null, 'Промена', r[fromF] ? sgn(r[toF] / r[fromF] - 1) : '—']],
+  })), { fmt: sgnNum, onClick: (d) => dash.setParams({ area: p.area === d.key ? 'all' : d.key }) });
+}
+
+/* ---------- временски часовник ---------- */
+function drawTimer(p, sun, timer, tk) {
+  tOn.value = String(st.tOn); tOff.value = String(st.tOff); tDim.value = st.tDim;
+  const scen = st.tOn + '|' + st.tOff + '|' + st.tDim;
+  const area = p.area;
+  const clockMonth = p.month === 'all' ? '2025-12' : p.month;
+
+  const kp = ['tk-actual', 'tk-astro', 'tk-timer', 'tk-saved', 'tk-den', 'tk-kw'].map((i) => document.getElementById(i));
+  const share = document.getElementById('tk-share');
+  if (tk.status === 'ok') {
+    const y = tk.data.find((r) => r.scen === scen && r.area === area && r.month === 'all');
+    const w = where({ scen, area, month: 'all' });
+    kp.forEach((el) => el.setAttribute('data-where', w));
+    share.setAttribute('data-where', w);
+    share.classList.remove('kc-up', 'kc-down');
+    if (y) {
+      const signed = (v) => (v < 0 ? '−' : '') + big(Math.abs(v));
+      setText(kp[0], big(y.kwh_actual)); setText(kp[1], big(y.kwh_astro)); setText(kp[2], big(y.kwh_timer));
+      setText(kp[3], signed(y.saved_kwh)); setText(kp[4], signed(y.saved_den)); setText(kp[5], f0.format(y.power_kw));
+      share.textContent = pct(y.saved_share) + ' од реалната потрошувачка';
+      if (y.saved_share) share.classList.add(y.saved_share > 0 ? 'kc-down' : 'kc-up');
+    } else { kp.forEach((el) => setText(el, '—')); share.textContent = 'Нема улично осветлување во ова подрачје.'; }
+  } else if (tk.status === 'error') kp.forEach((el) => setText(el, '—'));
+
+  const cb = document.getElementById('ch-clock');
+  legend(document.getElementById('lg-clock'), [['var(--cds-chart-muted)', 'Ноќ'], [color(0), 'Вклучено, полна моќност'], [color(1), 'Ноќен режим'], [color(3), 'Нижа тарифа']]);
+  if (sun.status === 'ok') {
+    const day = sun.data.find((r) => r.month === clockMonth && r.day === 15);
+    document.getElementById('h-clock').textContent = 'Часовник на ден: 15 ' + MNAME[clockMonth.slice(5)].toLowerCase() + ' ' + clockMonth.slice(0, 4);
+    const dw = where({ date: day.date });
+    for (const id of ['cf-set', 'cf-rise', 'cf-night']) document.getElementById(id).setAttribute('data-where', dw);
+    const onH = day.sunset + st.tOn / 60, offH = day.sunrise - st.tOff / 60;
+    document.getElementById('cf-set').textContent = hm(day.sunset);
+    document.getElementById('cf-rise').textContent = hm(day.sunrise);
+    document.getElementById('cf-night').textContent = dur(day.night);
+    document.getElementById('cf-on').textContent = hm(onH);
+    document.getElementById('cf-off').textContent = hm(offH);
+    drawClock(cb, day, onH, offH);
+  } else if (sun.status === 'error') fail(cb); else pending(cb);
+  const hEl = document.getElementById('cf-hours');
+  if (timer.status === 'ok') {
+    const t = timer.data.find((r) => r.scen === scen && r.month === clockMonth);
+    hEl.setAttribute('data-where', where({ scen, month: clockMonth }));
+    hEl.textContent = t ? f0.format(t.hours) + ' ч' : '—';
+  }
+
+  const yb = document.getElementById('ch-year');
+  legend(document.getElementById('lg-year'), [['var(--cds-chart-muted)', 'Ноќ (зајдисонце → изгрејсонце)'], [color(0), 'Вклучено според часовникот'], [color(1), 'Ноќен режим']]);
+  if (sun.status === 'ok') drawYear(yb, sun.data, p.month);
+  else if (sun.status === 'error') fail(yb); else pending(yb);
+
+  const mb = document.getElementById('ch-tm');
+  const body = document.getElementById('t-timer').tBodies[0];
+  legend(document.getElementById('lg-tm'), [[color(2), 'Реално'], ['var(--cds-chart-muted)', 'Само зајдисонце–изгрејсонце'], [color(0), 'Со часовникот']]);
+  if (tk.status !== 'ok') { if (tk.status === 'error') fail(mb); else pending(mb); body.replaceChildren(); return; }
+  const rows = MONTHS.map((k) => tk.data.find((r) => r.scen === scen && r.area === area && r.month === k)).filter(Boolean);
+  if (!rows.length) { clearChart(mb); body.replaceChildren(); return; }
+  monthBars(mb, rows.map((r) => ({
+    key: r.month, dim: p.month !== 'all' && r.month !== p.month,
+    parts: [{ v: r.kwh_actual, color: color(2), name: 'Реално', fmt: (v) => f0.format(v) + ' kWh' }, { v: r.kwh_astro, color: 'var(--cds-chart-muted)', name: 'Зајдисонце–изгрејсонце', fmt: (v) => f0.format(v) + ' kWh' }, { v: r.kwh_timer, color: color(0), name: 'Часовник', fmt: (v) => f0.format(v) + ' kWh' }],
+    extra: [[null, 'Заштеда', f0.format(r.saved_kwh) + ' kWh · ' + f0.format(r.saved_den) + ' ден.'], [null, 'Проценета моќност', f0.format(r.power_kw) + ' kW']],
+  })), { height: 240, grouped: true, onClick: (d) => dash.setParams({ month: p.month === d.key ? 'all' : d.key }) });
+  const yr = tk.data.find((r) => r.scen === scen && r.area === area && r.month === 'all');
+  body.replaceChildren(...rows.concat(yr ? [yr] : []).map((r) => {
+    const tr = document.createElement('tr');
+    tr.dataset.key = r.id;
+    if (r.month === p.month) tr.setAttribute('aria-selected', 'true');
+    if (r.month === 'all') tr.className = 'kc-total';
+    tr.append(td(r.month_label), td(f0.format(r.night_hours), 'kc-num kc-hide-sm'), td(f0.format(r.timer_hours), 'kc-num kc-hide-sm'), td(f0.format(r.power_kw), 'kc-num kc-hide-sm'),
+      td(f0.format(r.kwh_actual), 'kc-num'), td(f0.format(r.kwh_timer), 'kc-num'), td(f0.format(r.saved_kwh), 'kc-num'), td(f0.format(r.saved_den), 'kc-num'));
+    return tr;
+  }));
+}
+
+function timerHoursDay(onH, offH) {
+  const end = offH + 24, on = end - onH;
+  let dimT = 0;
+  for (const [ws, we] of DIMWIN[st.tDim]) dimT += Math.max(0, Math.min(end, we) - Math.max(onH, ws));
+  return { on, eq: on - (1 - DIMF[st.tDim]) * dimT };
+}
+
+function drawClock(box, day, onH, offH) {
+  const S = 320;
+  const { svg } = svgIn(box, S, S);
+  const c = S / 2, g = svg.append('g').attr('transform', `translate(${c},${c})`);
+  const ang = (h) => h / 24 * 2 * Math.PI;
+  const arc = (r0, r1, a, b) => d3.arc()({ innerRadius: r0, outerRadius: r1, startAngle: ang(a), endAngle: ang(b) });
+  const end = offH + 24;
+  g.append('path').attr('d', arc(72, 128, 0, 24)).attr('fill', 'var(--color-bg)');
+  if (day.dow === 0) g.append('path').attr('d', arc(132, 138, 0, 24)).attr('fill', color(3));
+  else g.append('path').attr('d', arc(132, 138, 22, 31)).attr('fill', color(3));
+  g.append('path').attr('d', arc(72, 92, day.sunset, day.sunrise + 24)).attr('fill', 'var(--cds-chart-muted)');
+  g.append('path').attr('d', arc(98, 126, onH, end)).attr('fill', color(0));
+  for (const [ws, we] of DIMWIN[st.tDim]) {
+    const a = Math.max(onH, ws), b = Math.min(end, we);
+    if (b > a) g.append('path').attr('d', arc(98, 126, a, b)).attr('fill', color(1));
+  }
+  for (let h = 0; h < 24; h++) {
+    const a = ang(h) - Math.PI / 2, major = h % 3 === 0;
+    g.append('line').attr('class', 'kc-axis').attr('x1', Math.cos(a) * (major ? 61 : 65)).attr('y1', Math.sin(a) * (major ? 61 : 65)).attr('x2', Math.cos(a) * 69).attr('y2', Math.sin(a) * 69);
+    if (major) g.append('text').attr('x', Math.cos(a) * 51).attr('y', Math.sin(a) * 51).attr('dy', '0.32em').attr('text-anchor', 'middle').text(String(h).padStart(2, '0'));
+  }
+  const hand = (h) => {
+    const a = ang(h) - Math.PI / 2;
+    g.append('line').attr('stroke', 'var(--color-fg)').attr('stroke-width', 1.5).attr('stroke-linecap', 'round').attr('x1', Math.cos(a) * 94).attr('y1', Math.sin(a) * 94).attr('x2', Math.cos(a) * 144).attr('y2', Math.sin(a) * 144);
+    const lx = Math.cos(a) * 148, ly = Math.sin(a) * 148;
+    g.append('text').attr('class', 'kc-strong').attr('x', lx).attr('y', ly).attr('dy', ly < 0 ? '-0.2em' : '0.9em').attr('text-anchor', Math.abs(lx) < 20 ? 'middle' : lx > 0 ? 'start' : 'end').text(hm(h));
+  };
+  hand(onH); hand(offH);
+  const t = timerHoursDay(onH, offH);
+  g.append('text').attr('class', 'kc-big').attr('text-anchor', 'middle').attr('y', -4).text(dur(t.on).replace(' мин', '′'));
+  g.append('text').attr('text-anchor', 'middle').attr('y', 16).text('вклучено');
+  if (DIMF[st.tDim] < 1) g.append('text').attr('text-anchor', 'middle').attr('y', 32).text(dur(t.eq).replace(' мин', '′') + ' со полна моќност');
+}
+
+function drawYear(box, days, activeMonth) {
+  const H = 300;
+  const { svg, W } = svgIn(box, H);
+  const tip = tipFor(box);
+  const y = d3.scaleLinear([14, 32], [10, H - 22]);
+  const ticks = [14, 17, 20, 23, 26, 29, 32];
+  const ml = measure(svg, ticks.map(hm)) + 10;
+  const parse = (s) => new Date(s + 'T00:00:00Z');
+  const x = d3.scaleUtc([parse(days[0].date), parse(days[days.length - 1].date)], [ml, W - 6]);
+  if (activeMonth !== 'all') {
+    const md = days.filter((d) => d.month === activeMonth);
+    if (md.length) svg.append('rect').attr('x', x(parse(md[0].date))).attr('width', Math.max(2, x(parse(md[md.length - 1].date)) - x(parse(md[0].date)))).attr('y', 10).attr('height', H - 32).attr('fill', 'var(--color-bg)');
+  }
+  yAxis(svg, y, ticks, hm, ml, W - 4);
+  for (const k of MONTHS) { const d0 = x(parse(k + '-01')); svg.append('line').attr('class', 'kc-gridl').attr('x1', d0).attr('x2', d0).attr('y1', 10).attr('y2', H - 22); }
+  const xb = d3.scaleBand(MONTHS, [ml, W - 6]);
+  xLabels(svg, xb, MONTHS, (k) => MSHORT[k.slice(5)], H - 4);
+  const pts = days.map((d) => ({ x: x(parse(d.date)), set: d.sunset, rise: d.sunrise + 24, on: d.sunset + st.tOn / 60, off: d.sunrise + 24 - st.tOff / 60, d }));
+  const cy = (h) => y(Math.max(14, Math.min(32, h)));
+  svg.append('path').attr('d', d3.area().x((q) => q.x).y0((q) => cy(q.set)).y1((q) => cy(q.rise))(pts)).attr('fill', 'var(--cds-chart-muted)').attr('opacity', 0.55);
+  svg.append('path').attr('d', d3.area().x((q) => q.x).y0((q) => cy(q.on)).y1((q) => cy(q.off))(pts)).attr('fill', color(0)).attr('opacity', 0.75);
+  for (const [ws, we] of DIMWIN[st.tDim]) {
+    svg.append('path').attr('d', d3.area().x((q) => q.x).y0((q) => cy(Math.max(ws, q.on))).y1((q) => cy(Math.max(Math.max(ws, q.on), Math.min(we, q.off))))(pts)).attr('fill', color(1)).attr('opacity', 0.9);
+  }
+  for (const f of ['set', 'rise']) svg.append('path').attr('d', d3.line().x((q) => q.x).y((q) => cy(q[f]))(pts)).attr('fill', 'none').attr('stroke', 'var(--color-fg-muted)').attr('stroke-width', 1.5);
+  const rule = svg.append('line').attr('class', 'kc-axis').attr('y1', 10).attr('y2', H - 22).attr('opacity', 0);
+  const xs = pts.map((q) => q.x);
+  const at = (ev) => { const [mx] = d3.pointer(ev); return pts[Math.max(0, Math.min(pts.length - 1, d3.bisectLeft(xs, mx)))]; };
+  svg.append('rect').attr('class', 'kc-hit').attr('x', ml).attr('y', 0).attr('width', W - ml).attr('height', H - 20)
+    .on('mousemove', (ev) => {
+      const q = at(ev);
+      rule.attr('x1', q.x).attr('x2', q.x).attr('opacity', 1);
+      const t = timerHoursDay(q.on, q.off - 24);
+      const [yy, mm, dd] = q.d.date.split('-');
+      tip.show(ev, Number(dd) + ' ' + MNAME[mm].toLowerCase() + ' ' + yy, [[null, 'Зајдисонце', hm(q.d.sunset)], [null, 'Изгрејсонце', hm(q.d.sunrise)], [null, 'Ноќ', dur(q.d.night)], [null, 'Вклучено', hm(q.on) + ' – ' + hm(q.off)], [null, 'Часови', dur(t.on)]]);
+    })
+    .on('mouseleave', () => { rule.attr('opacity', 0); tip.hide(); })
+    .on('click', (ev) => { const k = at(ev).d.month; dash.setParams({ month: activeMonth === k ? 'all' : k }); });
+}
+
+/* ---------- мерни места ---------- */
 function filterMeters(rows, p, month) {
   return rows.filter((r) => r.month === month && (p.cat === 'all' || r.cat === p.cat) && (p.area === 'all' || r.area === p.area));
 }
@@ -843,11 +1512,10 @@ function sortRows(rows, s) {
 }
 function markSort(table, s) {
   table.querySelectorAll('th').forEach((th) => {
-    const k = th.querySelector('button').dataset.sort;
+    const k = th.querySelector('button')?.dataset.sort;
     if (k === s.key) th.setAttribute('aria-sort', s.dir > 0 ? 'ascending' : 'descending'); else th.removeAttribute('aria-sort');
   });
 }
-function td(text, cls) { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; return c; }
 
 function drawMeters(p, meters) {
   const body = tMeters.querySelector('tbody');
@@ -859,26 +1527,26 @@ function drawMeters(p, meters) {
   let list = filterMeters(rows, p, p.month);
   if (st.q) list = list.filter((r) => (r.meter + ' ' + r.address + ' ' + r.meter_no + ' ' + r.area).toLowerCase().includes(st.q));
   sortRows(list, st.sort); markSort(tMeters, st.sort);
-  document.getElementById('t-note').textContent = (p.month === 'all' ? 'Збир за 12 месеци' : 'Вредности за ' + longM(p.month).toLowerCase()) + '. Кликнете на ред за детали.';
+  document.getElementById('t-note').textContent = (p.month === 'all' ? 'Збир за 12 месеци, со тренд на kWh по месец' : 'Вредности за ' + longM(p.month).toLowerCase()) + '. Кликнете на ред за детали.';
   count.textContent = f0.format(list.length) + ' мерни места';
   body.replaceChildren(...list.map((r) => {
     const tr = document.createElement('tr');
+    tr.className = 'kc-click';
     tr.dataset.key = enc(r.meter) + ',' + enc(r.month);
     tr.setAttribute('aria-selected', String(r.meter === st.sel));
-    const k = td(String(r.meter));
     const a = td(r.address, 'kc-addr'); a.title = r.address;
     const kw = td(f2.format(r.kwh), 'kc-num');
     if (p.month === 'all') kw.append(spark(MONTHS.map((m) => trend.get(r.meter)?.get(m) ?? null)));
     const fl = document.createElement('td'); chips(fl, r.flags);
-    tr.append(k, a, td(r.area, 'kc-hide-sm'), td(r.cat_label, 'kc-hide-sm'), kw, td(f2.format(r.billed), 'kc-num'), td(r.price == null ? '—' : f2.format(r.price), 'kc-num kc-hide-sm'), td(pct(r.avt_share), 'kc-num kc-hide-sm'), fl);
+    tr.append(td(String(r.meter)), a, td(r.area, 'kc-hide-sm'), td(r.cat_label, 'kc-hide-sm'), kw, td(f2.format(r.kwh_day), 'kc-num kc-hide-sm'), td(f2.format(r.billed), 'kc-num'), td(r.price == null ? '—' : f2.format(r.price), 'kc-num kc-hide-sm'), td(pct(r.avt_share), 'kc-num kc-hide-sm'), fl);
     return tr;
   }));
 
-  /* детали */
   const box = document.getElementById('ch-detail');
   const title = document.getElementById('d-title'), sub = document.getElementById('d-sub');
   const yr = st.sel ? rows.find((r) => r.meter === st.sel && r.month === 'all') : null;
-  if (!yr) { box.querySelector('.kc-plot')?.replaceChildren(); document.getElementById('lg-detail').replaceChildren(); return; }
+  document.getElementById('d-cmp').hidden = !yr;
+  if (!yr) { clearChart(box); document.getElementById('lg-detail').replaceChildren(); return; }
   title.textContent = 'Мерно место ' + yr.meter;
   sub.textContent = yr.address + ' · ' + yr.cat_label + ' · броило ' + yr.meter_no + ' · ' + f0.format(yr.kwh) + ' kWh и ' + f0.format(yr.billed) + ' ден. за ' + yr.months + ' месеци' + (yr.flags ? ' · ' + yr.flags : '');
   legend(document.getElementById('lg-detail'), [[color(0), 'АНТ – нижа тарифа'], [color(1), 'АВТ – виша тарифа'], ['var(--cds-chart-muted)', 'Неразделено']]);
@@ -886,69 +1554,70 @@ function drawMeters(p, meters) {
   monthBars(box, MONTHS.map((k) => mrows.find((r) => r.month === k)).filter(Boolean).map((r) => ({
     key: r.month, dim: false,
     parts: [{ v: r.kwh_ant, color: color(0), name: 'АНТ', fmt: (v) => f2.format(v) + ' kWh' }, { v: r.kwh_avt, color: color(1), name: 'АВТ', fmt: (v) => f2.format(v) + ' kWh' }, { v: r.kwh_other, color: 'var(--cds-chart-muted)', name: 'Неразделено', fmt: (v) => f2.format(v) + ' kWh' }],
-    extra: [[null, 'Фактурирано', f2.format(r.billed) + ' ден.'], [null, 'ден./kWh', r.price == null ? '—' : f2.format(r.price)]],
+    extra: [[null, 'kWh по ден', f2.format(r.kwh_day)], [null, 'Фактурирано', f2.format(r.billed) + ' ден.'], [null, 'ден./kWh', r.price == null ? '—' : f2.format(r.price)]],
   })), { height: 180 });
 }
 
+/* ---------- ефикасност ---------- */
 function drawEfficiency(p, cube, meters, pareto, savings) {
-  /* Парето */
+  const M = MEAS[p.measure];
+  document.getElementById('h-pareto').textContent = p.measure === 'kwh' ? 'Каде оди енергијата' : 'Каде оди трошокот';
+  document.getElementById('pareto-lead').textContent = 'Кумулативен удел во ' + (p.measure === 'kwh' ? 'kWh' : 'фактурираното') + ' за 12 месеци';
   const pb = document.getElementById('ch-pareto');
   const t10 = document.getElementById('p-top10'), t20 = document.getElementById('p-top20');
   if (pareto.status === 'ok') {
-    const rs = pareto.data.filter((r) => r.cat === p.cat && r.area === p.area).sort((a, b) => a.rank - b.rank);
+    const rs = pareto.data.filter((r) => r.measure === p.measure && r.cat === p.cat && r.area === p.area).sort((a, b) => a.rank - b.rank);
     const at = (n) => rs.find((r) => r.rank === Math.min(n, rs.length));
     for (const [el, n] of [[t10, 10], [t20, 20]]) {
       const r = at(n);
-      if (r) { el.setAttribute('data-where', where({ cat: p.cat, area: p.area, rank: r.rank })); el.textContent = pct(r.cum_share); } else el.textContent = '—';
+      if (r) { el.setAttribute('data-where', where({ measure: p.measure, cat: p.cat, area: p.area, rank: r.rank })); el.textContent = pct(r.cum_share); } else el.textContent = '—';
     }
-    const H = 180;
-    const { svg, W } = svgIn(pb, H);
-    const tip = tipFor(pb);
-    const y = d3.scaleLinear([0, 1], [H - 22, 10]);
-    const ticks = [0, 0.25, 0.5, 0.75, 1];
-    const ml = measure(svg, ticks.map((v) => pct(v, 0))) + 10;
-    const x = d3.scaleLinear([1, Math.max(2, rs.length)], [ml + 4, W - 8]);
-    yAxis(svg, y, ticks, (v) => pct(v, 0), ml, W - 4);
-    svg.append('line').attr('class', 'kc-ref').attr('x1', ml).attr('x2', W - 4).attr('y1', y(0.8)).attr('y2', y(0.8));
-    const xt = x.ticks(Math.min(6, rs.length)).filter((v) => Number.isInteger(v));
-    for (const v of xt) svg.append('text').attr('x', x(v)).attr('y', H - 4).attr('text-anchor', 'middle').text(f0.format(v));
-    const grad = 'kc-g-' + Math.random().toString(36).slice(2, 8);
-    const lg = svg.append('defs').append('linearGradient').attr('id', grad).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
-    [[0, 0.26], [0.25, 0.16], [0.5, 0.08], [0.75, 0.03], [1, 0]].forEach(([o, a]) => lg.append('stop').attr('offset', o).attr('style', `stop-color:${color(0)};stop-opacity:${a}`));
-    svg.append('path').attr('d', d3.area().x((r) => x(r.rank)).y0(y(0)).y1((r) => y(r.cum_share))(rs)).attr('fill', `url(#${grad})`);
-    svg.append('path').attr('d', d3.line().x((r) => x(r.rank)).y((r) => y(r.cum_share))(rs)).attr('fill', 'none').attr('stroke', color(0)).attr('stroke-width', 2).attr('stroke-linejoin', 'round');
-    const dot = svg.append('circle').attr('r', 4).attr('fill', color(0)).attr('opacity', 0);
-    const delaunay = rs.map((r) => x(r.rank));
-    svg.append('rect').attr('class', 'kc-hit').attr('x', ml).attr('y', 0).attr('width', W - ml).attr('height', H - 20)
-      .on('mousemove', (ev) => {
-        const [mx] = d3.pointer(ev);
-        const i = Math.max(0, Math.min(rs.length - 1, d3.bisectLeft(delaunay, mx)));
-        const r = rs[i];
-        dot.attr('cx', x(r.rank)).attr('cy', y(r.cum_share)).attr('opacity', 1);
-        tip.show(ev, 'Првите ' + r.rank + ' мерни места', [[null, 'Кумулативен удел', pct(r.cum_share)], [null, r.rank + '. ' + r.address, f0.format(r.billed) + ' ден.']]);
-      })
-      .on('mouseleave', () => { dot.attr('opacity', 0); tip.hide(); });
+    if (rs.length) {
+      const H = 180;
+      const { svg, W } = svgIn(pb, H);
+      const tip = tipFor(pb);
+      const y = d3.scaleLinear([0, 1], [H - 22, 10]);
+      const ticks = [0, 0.25, 0.5, 0.75, 1];
+      const ml = measure(svg, ticks.map((v) => pct(v, 0))) + 10;
+      const x = d3.scaleLinear([1, Math.max(2, rs.length)], [ml + 4, W - 8]);
+      yAxis(svg, y, ticks, (v) => pct(v, 0), ml, W - 4);
+      svg.append('line').attr('class', 'kc-ref').attr('x1', ml).attr('x2', W - 4).attr('y1', y(0.8)).attr('y2', y(0.8));
+      const xt = x.ticks(Math.min(6, rs.length)).filter((v) => Number.isInteger(v));
+      for (const v of xt) svg.append('text').attr('x', x(v)).attr('y', H - 4).attr('text-anchor', 'middle').text(f0.format(v));
+      const grad = 'kc-g-' + Math.random().toString(36).slice(2, 8);
+      const lg = svg.append('defs').append('linearGradient').attr('id', grad).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
+      [[0, 0.26], [0.25, 0.16], [0.5, 0.08], [0.75, 0.03], [1, 0]].forEach(([o, a]) => lg.append('stop').attr('offset', o).attr('style', `stop-color:${color(0)};stop-opacity:${a}`));
+      svg.append('path').attr('d', d3.area().x((r) => x(r.rank)).y0(y(0)).y1((r) => y(r.cum_share))(rs)).attr('fill', `url(#${grad})`);
+      svg.append('path').attr('d', d3.line().x((r) => x(r.rank)).y((r) => y(r.cum_share))(rs)).attr('fill', 'none').attr('stroke', color(0)).attr('stroke-width', 2).attr('stroke-linejoin', 'round');
+      const dot = svg.append('circle').attr('r', 4).attr('fill', color(0)).attr('opacity', 0);
+      const xs = rs.map((r) => x(r.rank));
+      svg.append('rect').attr('class', 'kc-hit').attr('x', ml).attr('y', 0).attr('width', W - ml).attr('height', H - 20)
+        .on('mousemove', (ev) => {
+          const [mx] = d3.pointer(ev);
+          const r = rs[Math.max(0, Math.min(rs.length - 1, d3.bisectLeft(xs, mx)))];
+          dot.attr('cx', x(r.rank)).attr('cy', y(r.cum_share)).attr('opacity', 1);
+          tip.show(ev, 'Првите ' + r.rank + ' мерни места', [[null, 'Кумулативен удел', pct(r.cum_share)], [null, r.rank + '. ' + r.address, M.fmt(r.value)]]);
+        })
+        .on('mouseleave', () => { dot.attr('opacity', 0); tip.hide(); });
+    } else clearChart(pb);
   } else if (pareto.status === 'error') fail(pb); else pending(pb);
 
-  /* удел АВТ */
   const ab = document.getElementById('ch-avt');
   if (cube.status === 'ok') {
     const s = MONTHS.map((k) => cube.data.find((r) => r.month === k && r.cat === 'ulicno' && r.area === p.area)).filter(Boolean);
     if (s.length) monthLines(ab, [{ name: 'Удел АВТ', color: color(1), points: s.map((r) => ({ k: r.month, v: r.avt_share })) }], { height: 180, zero: true, fmt: (v) => pct(v, 0), active: p.month });
-    else { ab.querySelector('.kc-plot')?.replaceChildren(); ab.classList.remove('dash-skeleton'); }
+    else clearChart(ab);
   } else if (cube.status === 'error') fail(ab); else pending(ab);
 
-  /* заштеди */
   document.getElementById('s-pct-l').textContent = st.pct + ' %';
   if (sPct.value !== String(st.pct)) sPct.value = String(st.pct);
   const sv = savings.status === 'ok' ? savings.data.find((r) => r.pct === st.pct && r.cat === p.cat && r.area === p.area) : null;
-  for (const [id, f, u] of [['s-kwh', 'kwh_saved', ''], ['s-den', 'den_saved', ''], ['s-month', 'den_saved_month', '']]) {
+  for (const [id, f] of [['s-kwh', 'kwh_saved'], ['s-den', 'den_saved'], ['s-month', 'den_saved_month']]) {
     const el = document.getElementById(id);
     el.setAttribute('data-where', where({ pct: st.pct, cat: p.cat, area: p.area }));
-    el.textContent = sv ? big(sv[f]) + u : '—';
+    el.textContent = sv ? big(sv[f]) : '—';
   }
 
-  /* аномалии */
   const body = tAnom.querySelector('tbody');
   const cnt = document.getElementById('a-count');
   if (meters.status !== 'ok') { body.replaceChildren(); cnt.textContent = meters.status === 'error' ? 'Failed to load' : ''; return; }
@@ -957,10 +1626,11 @@ function drawEfficiency(p, cube, meters, pareto, savings) {
   cnt.textContent = f0.format(list.length) + ' мерни места со барем една ознака (за 12 месеци)';
   body.replaceChildren(...list.map((r) => {
     const tr = document.createElement('tr');
+    tr.className = 'kc-click';
     tr.dataset.key = enc(r.meter) + ',' + enc(r.month);
     const a = td(r.address, 'kc-addr'); a.title = r.address;
     const fl = document.createElement('td'); chips(fl, r.flags);
-    tr.append(td(String(r.meter)), a, td(f0.format(r.months), 'kc-num kc-hide-sm'), td(f0.format(r.zero_months), 'kc-num'), td(r.spike == null ? '—' : f2.format(r.spike), 'kc-num kc-hide-sm'), td(pct(r.avt_share), 'kc-num kc-hide-sm'), td(f2.format(r.billed), 'kc-num'), fl);
+    tr.append(td(String(r.meter)), a, td(f0.format(r.months), 'kc-num kc-hide-sm'), td(f0.format(r.zero_months), 'kc-num'), td(r.spike == null ? '—' : f2.format(r.spike), 'kc-num kc-hide-sm'), td(pct(r.avt_share), 'kc-num kc-hide-sm'), td(f2.format(r.kwh), 'kc-num'), td(f2.format(r.billed), 'kc-num kc-hide-sm'), fl);
     return tr;
   }));
 }

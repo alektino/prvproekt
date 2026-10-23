@@ -63,7 +63,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
   const raw = { items: d3.csvParse(window.KC_ITEMS_CSV) };
   const results = {};
   const listeners = [];
-  const defaults = { month: 'all', cat: 'all', area: 'all' };
+  const defaults = { month: 'all', cat: 'all', area: 'all', measure: 'kwh' };
   let params = { ...defaults };
   const fire = () => listeners.forEach((fn) => fn());
   window.dash = {
