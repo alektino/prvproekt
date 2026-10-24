@@ -81,6 +81,7 @@ def group_of_meter(meter):
 def analyse():
     a = {r["kluch"]: r["vrednost"] for r in read("pretpostavki.csv")}
     W_OLD, ACTIVE, BURN = float(a["stari_watt"]), float(a["stari_aktivni"]), float(a["led_rabota"])
+    LOSS = float(a["zagubi"])
     places, lamps, mapping = read("naseleni.csv"), read("svetilki.csv"), read("mapiranje.csv")
 
     units = {}
@@ -178,12 +179,12 @@ def analyse():
             ks = months if m == "all" else [m]
             c = {f: sum(comp[name, k][f] for k in ks) for f in ("kwh", "const", "deco", "night")}
             h = sum(H[k] for k in ks)
-            e_led, rest, active, installed, deficit = estimate(c["night"], u["led"], u["led_w"], h)
+            e_led, rest, active, installed, deficit = estimate(c["night"] * (1 - LOSS), u["led"], u["led_w"], h)
             rows.append({
                 "opstina": u["group"], "mesto": name, "naseleni_mesta": ", ".join(u["members"]), "mesec": m,
                 "merni_mesta": len(u["meters"]), "led": u["led"], "led_kw": round(u["led_w"] / 1000, 3),
                 "nokni_casovi": round(h, 1), "kwh": round(c["kwh"], 2), "kwh_postojano": round(c["const"], 1), "kwh_ukras": round(c["deco"], 1),
-                "kwh_nokno": round(c["night"], 1), "kwh_led": round(e_led, 1), "ostatok_kwh": round(rest, 1),
+                "kwh_nokno": round(c["night"], 1), "kwh_zagubi": round(c["night"] * LOSS, 1), "kwh_led": round(e_led, 1), "ostatok_kwh": round(rest, 1),
                 "stari_aktivni": round(active), "stari_postaveni": round(installed), "led_ne_svetat": round(deficit),
                 "udel_stari": round(installed / (installed + u["led"]), 4) if installed + u["led"] else None,
                 "status": status(c["kwh"], u["led"], rest, len(u["meters"])),
@@ -196,15 +197,15 @@ def analyse():
             led = sum(r["led"] for r in rs)
             inst = sum(r["stari_postaveni"] for r in rs)
             h = sum(H[k] for k in (months if m == "all" else [m]))
-            net = max(0.0, sum(r["kwh_nokno"] - r["kwh_led"] for r in rs)) * 1000 / (h * W_OLD) / ACTIVE
+            net = max(0.0, sum(r["kwh_nokno"] - r["kwh_zagubi"] - r["kwh_led"] for r in rs)) * 1000 / (h * W_OLD) / ACTIVE
             by_group.append({
                 "opstina": g, "mesec": m, "led": led, "kwh": round(sum(r["kwh"] for r in rs), 1),
                 "kwh_postojano": round(sum(r["kwh_postojano"] for r in rs), 1), "kwh_ukras": round(sum(r["kwh_ukras"] for r in rs), 1),
-                "kwh_nokno": round(sum(r["kwh_nokno"] for r in rs), 1), "kwh_led": round(sum(r["kwh_led"] for r in rs), 1),
+                "kwh_nokno": round(sum(r["kwh_nokno"] for r in rs), 1), "kwh_zagubi": round(sum(r["kwh_zagubi"] for r in rs), 1), "kwh_led": round(sum(r["kwh_led"] for r in rs), 1),
                 "ostatok_kwh": round(sum(max(r["ostatok_kwh"], 0) for r in rs), 1),
                 "stari_aktivni": sum(r["stari_aktivni"] for r in rs), "stari_postaveni": inst,
                 "led_ne_svetat": sum(r["led_ne_svetat"] for r in rs),
-                "ostatok_neto": round(max(0.0, sum(r["kwh_nokno"] - r["kwh_led"] for r in rs)), 1),
+                "ostatok_neto": round(max(0.0, sum(r["kwh_nokno"] - r["kwh_zagubi"] - r["kwh_led"] for r in rs)), 1),
                 "stari_neto": round(net), "udel_stari": round(net / (net + led), 4) if net + led else None,
             })
 
@@ -227,9 +228,9 @@ def analyse():
             "stari_min_mesec": min(monthly), "stari_max_mesec": max(monthly),
             "procenka_udel": round(share, 4), "procenka_zapis": note, "procenka_stari": guess_n,
             "kwh": y["kwh"], "kwh_postojano": y["kwh_postojano"], "kwh_ukras": y["kwh_ukras"],
-            "ostatok_kwh": round(max(0.0, y["kwh_nokno"] - y["kwh_led"]), 1), "kwh_po_procenka": round(kwh_guess),
-            "neobjasneti_kwh": round(max(0.0, y["kwh_nokno"] - y["kwh_led"]) - kwh_guess),
-            "potrebna_moknost_w": round(max(0.0, y["kwh_nokno"] - y["kwh_led"]) * 1000 / (H_YEAR(H) * ACTIVE * guess_n), 1) if guess_n else None,
+            "ostatok_kwh": round(max(0.0, y["kwh_nokno"] - y["kwh_zagubi"] - y["kwh_led"]), 1), "kwh_po_procenka": round(kwh_guess),
+            "neobjasneti_kwh": round(max(0.0, y["kwh_nokno"] - y["kwh_zagubi"] - y["kwh_led"]) - kwh_guess),
+            "potrebna_moknost_w": round(max(0.0, y["kwh_nokno"] - y["kwh_zagubi"] - y["kwh_led"]) * 1000 / (H_YEAR(H) * ACTIVE * guess_n), 1) if guess_n else None,
         })
     return a, months, rows, by_group, compare, sorted(profiles, key=lambda p: (GROUPS.index(p["opstina"]), p["mesto"], -p["kwh"]))
 
@@ -272,12 +273,13 @@ def write_xlsx(a, months, rows, by_group, compare, profiles):
         ("Удел на активни стари светилки", a["stari_aktivni"]),
         ("Ваша проценка за вкупно незаменети стари светилки (над)", a["stari_procenka_vkupno"]),
         ("Новогодишно украсување на мерните места во градот", a["ukrasuvanje"]),
+        ("Загуби по броилото (удел од ноќната енергија)", a["zagubi"]),
         ("", None),
         ("Пресметка (верзија 2: потрошувачката на секое мерно место се дели на три дела)", None),
         ("1. За секое мерно место: kWh по месец ≈ ноќна моќност × ноќни часови + постојана моќност × 24 ч × денови (без декември и јануари).", None),
         ("   Постојаниот дел троши и дење: светилки што светат дење или други потрошувачи на ормарот (згради, пумпи, бензински станици).", None),
         ("2. Украсување: во градот Кичево, вишокот во декември и јануари (15.12–15.01) над поделбата од чекор 1.", None),
-        ("3. Ноќна енергија = фактурирани kWh − постојан дел − украсување. Само таа се споредува со светилките.", None),
+        ("3. Ноќна енергија = фактурирани kWh − постојан дел − украсување. Од неа се одбиваат загубите по броилото (кабли до светилките, уреди во ормарите). Само остатокот се споредува со светилките.", None),
         ("4. E_LED = вкупна моќност на LED светилките × ноќни часови (зајдисонце–изгрејсонце за Кичево); остаток = ноќна енергија − E_LED", None),
         ("5. Активни стари светилки = остаток ÷ (ноќни часови × моќност на стара светилка); поставени = активни ÷ удел на активни", None),
         ("6. Ако остатокот е негативен: дел од LED не светат („LED што не светат“).", None),

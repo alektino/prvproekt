@@ -17,6 +17,8 @@ SOURCES = {
     "sporedba": PROJ / "izlez" / "sporedba.csv",
     "pretpostavki": PROJ / "vlez" / "pretpostavki.csv",
     "profil": PROJ / "izlez" / "merni_mesta_profil.csv",
+    "proba": PROJ / "izlez" / "proba_moknost.csv",
+    "proba_mesecno": PROJ / "izlez" / "proba_moknost_mesecno.csv",
 }
 data = {k: p.read_text(encoding="utf-8") for k, p in SOURCES.items()}
 (ROOT / "podatoci.js").write_text("window.KC_CSV = " + json.dumps(data, ensure_ascii=False) + ";\n", encoding="utf-8")

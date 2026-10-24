@@ -217,7 +217,8 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
       <ul class="kc-defs">
         <li><b>1. Поделба на потрошувачката на секое мерно место:</b> месечните kWh се делат на <b>ноќен дел</b> (расте и опаѓа со должината на ноќта) и <b>постојан дел</b> (троши и дење, 24 часа). Постојаниот дел не се смета за светилки: тоа се светилки што светат дење или други потрошувачи на ормарот.</li>
         <li><b>2. Украсување:</b> во градот Кичево, вишокот во декември и јануари (15.12–15.01) е новогодишно украсување и не се смета за светилки.</li>
-        <li><b>3. Светилки:</b> ноќната енергија минус енергијата на LED од ЈПП (моќност × ноќни часови) ја трошат старите светилки: активни стари = остаток ÷ (ноќни часови × 9 W); поставени = активни ÷ 0,8.</li>
+        <li><b>3. Загуби:</b> од ноќната енергија се одбиваат загубите по броилото (кабли од ормарот до светилките, уреди во ормарите). Загубите пред броилото не се фактурираат.</li>
+        <li><b>4. Светилки:</b> остатокот минус енергијата на LED од ЈПП (моќност × ноќни часови) го трошат старите светилки: активни стари = остаток ÷ (ноќни часови × 9 W); поставени = активни ÷ 0,8.</li>
         <li><b>Нето по поранешна општина:</b> вишокот и недостигот на сите места се сметаат заедно, па грешките во поврзувањето мерно место → село се поништуваат. По населено место се прикажува бруто бројот, а недостигот како „LED што не светат“.</li>
         <li>Вашите проценки по поранешна општина не влегуваат во пресметката. Тие се споредуваат само на крајот, во „Споредба со проценките“.</li>
       </ul>
@@ -245,7 +246,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
       </div>
 
       <div class="kc-card" id="karta-energija">
-        <div class="kc-head"><h3 id="h-en">Каде оди енергијата</h3><p class="kc-note">Фактурирани kWh по месец: LED од ЈПП, ноќен остаток (стари светилки), постојан дневен товар и украсување.</p></div>
+        <div class="kc-head"><h3 id="h-en">Каде оди енергијата</h3><p class="kc-note">Фактурирани kWh по месец: LED од ЈПП, ноќен остаток (стари светилки), загуби по броилото, постојан дневен товар и украсување.</p></div>
         <div class="kc-legend" id="lg-en"></div>
         <div class="kc-chart kc-short dash-skeleton" id="ch-en" data-source="opstini"></div>
       </div>
@@ -303,6 +304,42 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
         </table>
       </div>
     </div>
+    <div class="kc-card" id="karta-proba">
+      <div class="kc-head"><h3>Проба: колкава моќност треба да имаат старите светилки?</h3>
+        <p class="kc-note">Бројот на стари светилки е фиксиран на вашата проценка, а се пресметува моќноста: (kWh × (1 − загуби) − kWh на LED) ÷ (број стари × удел активни × ноќни часови). <b>A</b> = сите фактурирани kWh без украсувањето; <b>B</b> = само ноќната енергија, без постојаниот 24-часовен товар и украсувањето.</p></div>
+      <p class="kc-lede" id="proba-lede"></p>
+      <div class="kc-tablebox" style="max-height: none">
+        <table class="kc-table" id="t-proba" data-source="proba" data-row-key="opstina,osnova,zagubi">
+          <thead><tr>
+            <th data-field="osnova"><span class="kc-th">Основа</span></th>
+            <th data-field="zagubi" class="kc-num"><span class="kc-th">Загуби</span></th>
+            <th data-field="kwh_nadvor_od_led" class="kc-num"><span class="kc-th">kWh надвор од LED</span></th>
+            <th data-field="w_aktivni_80" class="kc-num"><span class="kc-th">W при 80 % активни</span></th>
+            <th data-field="w_aktivni_90" class="kc-num"><span class="kc-th">W при 90 %</span></th>
+            <th data-field="w_aktivni_100" class="kc-num"><span class="kc-th">W при 100 %</span></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="kc-head"><h3 id="h-proba-op">По поранешна општина (B, 10 % загуби)</h3><p class="kc-note">Старите светилки се распоредени по општини според вашите проценки за удел. Негативна вредност значи дека LED сами трошат повеќе отколку што е измерено.</p></div>
+      <div class="kc-tablebox" style="max-height: none">
+        <table class="kc-table" id="t-proba-op" data-source="proba" data-row-key="opstina,osnova,zagubi">
+          <thead><tr>
+            <th data-field="opstina"><span class="kc-th">Поранешна општина</span></th>
+            <th data-field="led" class="kc-num"><span class="kc-th">LED</span></th>
+            <th data-field="stari" class="kc-num"><span class="kc-th">Стари (проценка)</span></th>
+            <th data-field="kwh_nadvor_od_led" class="kc-num"><span class="kc-th">kWh надвор од LED</span></th>
+            <th data-field="w_aktivni_80" class="kc-num"><span class="kc-th">W при 80 %</span></th>
+            <th data-field="w_aktivni_100" class="kc-num"><span class="kc-th">W при 100 %</span></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="kc-head"><h3>По месец (сите општини, 10 % загуби)</h3><p class="kc-note">Потребна моќност по стара светилка за секој месец. Испрекинатата линија е 9 W.</p></div>
+      <div class="kc-legend" id="lg-proba-m"></div>
+      <div class="kc-chart kc-short dash-skeleton" id="ch-proba-m" data-source="proba_mesecno"></div>
+    </div>
+
     <div class="kc-card" id="karta-zaklucoci">
       <div class="kc-head"><h3>Што значи ова</h3></div>
       <ul class="kc-defs" id="sp-list">
@@ -482,7 +519,7 @@ function monthLines(box, series, o) {
   const vals = series.flatMap((s) => s.points.map((p) => p.v)).filter((v) => v != null);
   if (!vals.length) return;
   if (o.ref != null) vals.push(o.ref);
-  const lo = o.zero ? 0 : d3.min(vals), hi = d3.max(vals);
+  const lo = o.zero ? Math.min(0, d3.min(vals)) : d3.min(vals), hi = d3.max(vals);
   const pad = o.zero ? 0 : (hi - lo) * 0.15 || 0.5;
   const y = d3.scaleLinear([lo - pad, (hi + pad) || 1], [H - 22, 10]).nice();
   const ticks = y.ticks(4);
@@ -606,7 +643,7 @@ function svDraw() {
   svLede(op);
   if (sv.tab === 'analiza') { svAnaliza(op, pr); svPricini(op, sp); }
   if (sv.tab === 'mesta') svMesta(me);
-  if (sv.tab === 'sporedba') svSporedba(sp, pr);
+  if (sv.tab === 'sporedba') { svSporedba(sp, pr); svProba(dash.data('proba'), dash.data('proba_mesecno'), pr); }
   if (sv.tab === 'mapa') svMapa(mp);
 }
 
@@ -650,11 +687,12 @@ function svAnaliza(op, pr) {
   })), { height: 260, onClick: (d) => pickMonth(d.key) });
 
   document.getElementById('h-en').textContent = 'Каде оди енергијата – ' + (sv.op === 'Вкупно' ? 'сите' : sv.op);
-  legend(document.getElementById('lg-en'), [[color(0), 'LED (ЈПП)'], [color(1), 'Ноќен остаток (стари)'], [color(5), 'Постојан дневен товар'], [color(3), 'Украсување']]);
+  legend(document.getElementById('lg-en'), [[color(0), 'LED (ЈПП)'], [color(1), 'Ноќен остаток (стари)'], [color(2), 'Загуби по броилото'], [color(5), 'Постојан дневен товар'], [color(3), 'Украсување']]);
   monthBars(boxes[1], MONTHS.map((k) => {
-    const r = get(sv.op, k), led = Math.min(N(r.kwh_led), N(r.kwh_nokno));
+    const r = get(sv.op, k), loss = N(r.kwh_zagubi), led = Math.min(N(r.kwh_led), N(r.kwh_nokno) - loss);
     return { key: k, dim: sv.month !== 'all' && sv.month !== k,
-      parts: [{ v: led, color: color(0), name: 'LED', fmt: (v) => f0.format(v) + ' kWh' }, { v: Math.max(0, N(r.kwh_nokno) - led), color: color(1), name: 'Ноќен остаток', fmt: (v) => f0.format(v) + ' kWh' },
+      parts: [{ v: led, color: color(0), name: 'LED', fmt: (v) => f0.format(v) + ' kWh' }, { v: Math.max(0, N(r.kwh_nokno) - loss - led), color: color(1), name: 'Ноќен остаток', fmt: (v) => f0.format(v) + ' kWh' },
+        { v: loss, color: color(2), name: 'Загуби', fmt: (v) => f0.format(v) + ' kWh' },
         { v: N(r.kwh_postojano), color: color(5), name: 'Постојан товар', fmt: (v) => f0.format(v) + ' kWh' }, { v: N(r.kwh_ukras), color: color(3), name: 'Украсување', fmt: (v) => f0.format(v) + ' kWh' }],
       extra: [[null, 'Фактурирано', f0.format(N(r.kwh)) + ' kWh']] };
   }), { height: 200, onClick: (d) => pickMonth(d.key) });
@@ -817,6 +855,44 @@ function svMapa(mp) {
   }));
 }
 
+function svProba(pb, pm, pr) {
+  const body = document.getElementById('t-proba').tBodies[0], bodyOp = document.getElementById('t-proba-op').tBodies[0];
+  const box = document.getElementById('ch-proba-m');
+  if (pb.status !== 'ok') { body.replaceChildren(); bodyOp.replaceChildren(); }
+  else {
+    const key = (r) => enc(r.opstina) + ',' + enc(r.osnova) + ',' + enc(r.zagubi);
+    const tot = pb.data.filter((r) => r.opstina === 'Вкупно');
+    const main = tot.find((r) => r.osnova === 'B' && N(r.zagubi) === 0.1);
+    const lede = document.getElementById('proba-lede');
+    const w = { opstina: 'Вкупно', osnova: 'B', zagubi: main.zagubi };
+    lede.replaceChildren('Со ', markB('proba', 'stari', w, f0.format(N(main.stari))), ' стари светилки, без постојаниот товар и украсувањето и со 10 % загуби, надвор од LED остануваат ',
+      markB('proba', 'kwh_nadvor_od_led', w, f0.format(N(main.kwh_nadvor_od_led)) + ' kWh'), '. Тоа одговара на стари светилки од ',
+      markB('proba', 'w_aktivni_100', w, f1.format(N(main.w_aktivni_100)) + ' W'), ' (сите активни) до ', markB('proba', 'w_aktivni_80', w, f1.format(N(main.w_aktivni_80)) + ' W'), ' (80 % активни).');
+    const wcls = (v) => 'kc-num ' + (v < 0 ? 'kc-r-zero' : v <= 14 ? 'kc-r-ok' : v <= 25 ? 'kc-r-more' : 'kc-r-much');
+    body.replaceChildren(...tot.map((r) => {
+      const tr = document.createElement('tr'); tr.dataset.key = key(r);
+      if (r === main) tr.className = 'kc-total';
+      tr.append(td(r.osnova === 'A' ? 'A – сите kWh без украсување' : 'B – само ноќна енергија'), td(pct(N(r.zagubi), 0), 'kc-num'), td(f0.format(N(r.kwh_nadvor_od_led)), 'kc-num'),
+        td(f1.format(N(r.w_aktivni_80)) + ' W', wcls(N(r.w_aktivni_80))), td(f1.format(N(r.w_aktivni_90)) + ' W', wcls(N(r.w_aktivni_90))), td(f1.format(N(r.w_aktivni_100)) + ' W', wcls(N(r.w_aktivni_100))));
+      return tr;
+    }));
+    const ops = pb.data.filter((r) => r.osnova === 'B' && N(r.zagubi) === 0.1);
+    bodyOp.replaceChildren(...ops.map((r) => {
+      const tr = document.createElement('tr'); tr.dataset.key = key(r);
+      if (r.opstina === 'Вкупно') tr.className = 'kc-total';
+      tr.append(td(r.opstina), td(f0.format(N(r.led)), 'kc-num'), td(f0.format(N(r.stari)), 'kc-num'), td(f0.format(N(r.kwh_nadvor_od_led)), 'kc-num'),
+        td(f1.format(N(r.w_aktivni_80)) + ' W', wcls(N(r.w_aktivni_80))), td(f1.format(N(r.w_aktivni_100)) + ' W', wcls(N(r.w_aktivni_100))));
+      return tr;
+    }));
+  }
+  if (pm.status !== 'ok') { if (pm.status === 'error') fail(box); else pending(box); return; }
+  legend(document.getElementById('lg-proba-m'), [[color(0), 'B, 80 % активни'], [color(1), 'A, 80 % активни'], ['var(--cds-chart-reference)', '9 W']]);
+  monthLines(box, [
+    { name: 'B, 80 %', color: color(0), points: pm.data.map((r) => ({ k: r.mesec, v: N(r.w_B_80) })) },
+    { name: 'A, 80 %', color: color(1), points: pm.data.map((r) => ({ k: r.mesec, v: N(r.w_A_80) })) },
+  ], { height: 200, zero: true, ref: 9, refLabel: '9 W', fmt: (v) => v == null ? '—' : f1.format(v) + ' W', axis: (v) => f0.format(v) + ' W' });
+}
+
 function svPricini(op, sp) {
   const list = document.getElementById('pricini-list');
   if (op.status !== 'ok' || sp.status !== 'ok') return;
@@ -827,6 +903,7 @@ function svPricini(op, sp) {
   list.replaceChildren(
     li(markB('opstini', 'kwh_postojano', w, big(N(y.kwh_postojano)) + ' kWh'), ' годишно се троши постојано, и дење (', pct(N(y.kwh_postojano) / N(y.kwh), 0), ' од уличното осветлување). Тоа не се светилки што светат ноќе: светилки што светат и дење или други потрошувачи на ормарите (на пр. „Собрание“, „Војна зграда“, „Над пумпа за вода“, „Б.П. Тиволи“). Листата е во „Мерни места“, профил „постојан“.'),
     li(markB('opstini', 'kwh_ukras', w, big(N(y.kwh_ukras)) + ' kWh'), ' е новогодишното украсување во градот (15.12–15.01).'),
+    li(markB('opstini', 'kwh_zagubi', w, big(N(y.kwh_zagubi)) + ' kWh'), ' се загуби по броилото (10 % од ноќната енергија): кабли од ормарот до светилките и уредите во ормарите. Тие се фактурираат, но не стигнуваат до светилките.'),
     li('Грешките во поврзувањето мерно место → село создаваат лажни „стари светилки“ во едно место и „LED што не светат“ во друго. Бројот по места (бруто) е ', markB('opstini', 'stari_postaveni', w, f0.format(N(y.stari_postaveni))),
       ', а нето бројот по поранешна општина е ', markB('opstini', 'stari_neto', w, f0.format(N(y.stari_neto))), '.'),
     li('Останува разлика во Зајас: нето ', markB('sporedba', 'presmetani_stari', { opstina: 'Зајас' }, f0.format(N(zaj.presmetani_stari))), ' стари светилки наспроти околу ',
