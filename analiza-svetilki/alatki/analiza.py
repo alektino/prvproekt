@@ -1,16 +1,19 @@
-"""Работна анализа: колку стари (незаменети) светилки светат во секое
-населено место, по месец.
+"""Работна анализа на улично осветлување – верзија 3 (модел „часовник“).
 
-Модел за секое населено место и месец:
-  E_LED   = вкупна моќност на LED светилките од ЈПП × ноќни часови × удел на работа
-  остаток = фактурирани kWh − E_LED
-  активни стари = остаток ÷ (ноќни часови × моќност на стара светилка)
-  поставени стари = активни стари ÷ удел на активни
-Ако остатокот е негативен, потрошувачката е помала од онаа што би ја имале
-LED светилките, па дел од LED не светат (LED „дефицит“).
+Претпоставки (ваши): сите фактурирани kWh, освен новогодишното украсување на
+наведените броила, ги трошат светилките; светилките светат само кога ќе им
+дозволи часовникот; LED од ЈПП се 100 % исправни; стари светилки има според
+вашата проценка по поранешна општина, со LED сијалица од 9 W, 80 % активни.
 
-Вашите проценки за уделот на стари светилки по поранешна општина се користат
-само на крајот, во листот „Споредба со проценки“.
+За секоја поранешна општина и месец се бара колку часа дневно светат:
+  моќност (kW)   = LED од ЈПП + стари × 9 W × 0,8
+  корисни kWh    = (фактурирани kWh − украсување) × (1 − загуби)
+  часови на ден  = корисни kWh ÷ моќност ÷ денови во месецот
+Се споредува со ноќта (зајдисонце–изгрејсонце за Кичево). Вишокот е можна
+заштеда ако часовниците се наместат точно.
+
+Обратна проверка: колку стари светилки би требале ако светилките светат точно
+од зајдисонце до изгрејсонце (и до 2 часа подолго).
 
 Употреба:  python3 analiza-svetilki/alatki/analiza.py
 Излез:     analiza-svetilki/izlez/*.csv и Анализа_светилки.xlsx
@@ -33,12 +36,10 @@ MONTH_NAMES = {"Јануари": "01", "Февруари": "02", "Март": "03
                "Јули": "07", "Август": "08", "Септември": "09", "Октомври": "10", "Ноември": "11", "Декември": "12"}
 SHORT = {"01": "Јан", "02": "Фев", "03": "Мар", "04": "Апр", "05": "Мај", "06": "Јун",
          "07": "Јул", "08": "Авг", "09": "Сеп", "10": "Окт", "11": "Ное", "12": "Дек"}
-# Поранешна општина според почетокот на бројот на мерното место (за непрепознаените)
-# Новогодишно украсување во градот (15.12–15.01): тие месеци не влегуваат во
-# поделбата ноќен/постојан товар, а вишокот над неа во градот е украсување.
+# Месеци со новогодишно украсување (15.12–15.01) на броилата од vlez/ukrasi.csv
 DECO_MONTHS = {"2025-12", "2026-01"}
-DECO_UNIT = "Кичево (град)"
-H_YEAR = lambda H: sum(v for k, v in H.items() if k != "all")
+EXTRA_MAX = 2  # горна граница за обратната проверка: часови на ден подолго од ноќта
+# Поранешна општина според почетокот на бројот на мерното место (за непрепознаените)
 METER_PREFIX = {"21021": "Кичево", "210316": "Другово", "210365": "Вранештица", "210366": "Зајас", "210367": "Осломеј"}
 
 
@@ -80,9 +81,10 @@ def group_of_meter(meter):
 
 def analyse():
     a = {r["kluch"]: r["vrednost"] for r in read("pretpostavki.csv")}
-    W_OLD, ACTIVE, BURN = float(a["stari_watt"]), float(a["stari_aktivni"]), float(a["led_rabota"])
-    LOSS = float(a["zagubi"])
+    W_OLD, ACTIVE, LOSS = float(a["stari_watt"]), float(a["stari_aktivni"]), float(a["zagubi"])
     places, lamps, mapping = read("naseleni.csv"), read("svetilki.csv"), read("mapiranje.csv")
+    deco_meters = {r["meter"] for r in read("ukrasi.csv")}
+    shares = {r["opstina"]: r for r in read("procenki.csv")}
 
     units = {}
     for p in places:
@@ -99,7 +101,7 @@ def analyse():
             continue
         unit_of[r["meter"]] = r["unit"] or "Непознато место – " + (r["group"] or group_of_meter(r["meter"]))
 
-    per_meter = defaultdict(dict)
+    per_meter, billed = defaultdict(dict), defaultdict(dict)
     months = set()
     for r in read("stavki.csv"):
         if "LV1" not in r["category"] or r["meter"] not in unit_of:
@@ -107,6 +109,7 @@ def analyse():
         m = month_key(r["month"])
         months.add(m)
         per_meter[r["meter"]][m] = per_meter[r["meter"]].get(m, 0) + float(r["kwh"])
+        billed[r["meter"]][m] = billed[r["meter"]].get(m, 0) + float(r["billed"])
         units[unit_of[r["meter"]]]["meters"].add(r["meter"])
     months = sorted(months)
     H = night_hours(months)
@@ -114,123 +117,119 @@ def analyse():
     fit_months = [m for m in months if m not in DECO_MONTHS]
 
     def fit(v):
-        """kWh_месец ≈ ноќна моќност × ноќни часови + постојана моќност × 24 × денови (без месеците со украсување)."""
+        """kWh_месец ≈ a × ноќни часови + b × денови (без месеците со украсување)."""
         ms = [m for m in fit_months if m in v]
-        x1, x2, y = [H[m] for m in ms], [24 * D[m] for m in ms], [v[m] for m in ms]
+        x1, x2, y = [H[m] for m in ms], [D[m] for m in ms], [v[m] for m in ms]
         if sum(1 for e in y if e > 0) < 3:
             return sum(v.values()) / sum(H[m] for m in v), 0.0
-        s11, s22, s12 = sum(a * a for a in x1), sum(b * b for b in x2), sum(a * b for a, b in zip(x1, x2))
-        t1, t2 = sum(a * e for a, e in zip(x1, y)), sum(b * e for b, e in zip(x2, y))
+        s11, s22, s12 = sum(p * p for p in x1), sum(q * q for q in x2), sum(p * q for p, q in zip(x1, x2))
+        t1, t2 = sum(p * e for p, e in zip(x1, y)), sum(q * e for q, e in zip(x2, y))
         det = s11 * s22 - s12 * s12
-        night, const = (t1 * s22 - t2 * s12) / det, (s11 * t2 - s12 * t1) / det
-        if night < 0:
+        na, nb = (t1 * s22 - t2 * s12) / det, (s11 * t2 - s12 * t1) / det
+        if na < 0:
             return 0.0, t2 / s22
-        if const < 0:
+        if nb < 0:
             return t1 / s11, 0.0
-        return night, const
+        return na, nb
 
     comp = defaultdict(lambda: defaultdict(float))
     profiles = []
     for meter, v in per_meter.items():
-        night_kw, const_kw = fit(v)
+        night_kw, per_day = fit(v)
         u = unit_of[meter]
+        deco_sum = 0.0
         for m in months:
             e = v.get(m, 0.0)
-            const = min(e, const_kw * 24 * D[m])
-            deco = max(0.0, e - const - night_kw * H[m]) if u == DECO_UNIT and m in DECO_MONTHS else 0.0
+            deco = max(0.0, e - night_kw * H[m] - per_day * D[m]) if meter in deco_meters and m in DECO_MONTHS else 0.0
             c = comp[u, m]
-            c["kwh"] += e; c["const"] += const; c["deco"] += deco; c["night"] += e - const - deco
-        year_night, year_const = night_kw * sum(H[m] for m in months), const_kw * 24 * sum(D.values())
-        share_const = year_const / (year_night + year_const) if year_night + year_const else 0
-        winter = [v.get(m, 0) / D[m] for m in ("2025-11", "2026-02")]
-        summer = [v.get(m, 0) / D[m] for m in ("2025-07", "2026-06")]
-        ratio = (sum(winter) / sum(summer)) if sum(summer) > 0 else None
+            c["kwh"] += e; c["deco"] += deco; c["billed"] += billed[meter].get(m, 0.0)
+            deco_sum += deco
+        year_night, year_flat = night_kw * sum(H.values()), per_day * sum(D.values())
+        flat = year_flat / (year_night + year_flat) if year_night + year_flat else 0
+        winter = sum(v.get(m, 0) / D[m] for m in ("2025-11", "2026-02"))
+        summer = sum(v.get(m, 0) / D[m] for m in ("2025-07", "2026-06"))
         profiles.append({
             "meter": meter, "mesto": u, "opstina": units[u]["group"], "adresa": meta[meter]["address"], "sigurnost": meta[meter]["certainty"],
-            "kwh": round(sum(v.values()), 1),
-            "nokna_moknost_kw": round(night_kw, 3), "postojana_moknost_kw": round(const_kw, 3),
-            "udel_postojano": round(share_const, 3), "zima_leto": round(ratio, 2) if ratio else None,
-            "profil": "без потрошувачка" if not sum(v.values()) else "ноќен" if share_const < 0.15 else "постојан" if share_const > 0.6 else "мешан",
+            "ukras": "да" if meter in deco_meters else "", "kwh_ukras": round(deco_sum, 1), "kwh": round(sum(v.values()), 1),
+            "nokna_moknost_kw": round(night_kw, 3), "dneven_del_kwh": round(per_day, 2), "udel_ramen": round(flat, 3),
+            "zima_leto": round(winter / summer, 2) if summer > 0 else None,
+            "profil": "без потрошувачка" if not sum(v.values()) else "следи ноќта" if flat < 0.15 else "рамен" if flat > 0.6 else "мешан",
         })
 
-    def estimate(night, led, led_w, h):
-        e_led = led_w * h * BURN / 1000
-        rest = night - e_led
-        active = max(rest, 0) * 1000 / (h * W_OLD)
-        deficit = max(-rest, 0) * 1000 / (h * BURN * (led_w / led)) if led else 0
-        return e_led, rest, active, active / ACTIVE, deficit
-
-    def status(e, led, rest, n_meters):
-        if not n_meters:
-            return "Нема мерно место"
-        if e == 0:
-            return "Без потрошувачка"
-        if not led:
-            return "Само стари светилки"
-        if rest < 0:
-            return "LED не светат сите"
-        return "LED и стари светилки"
+    def unit_row(name, u, m, ks):
+        c = {f: sum(comp[name, k][f] for k in ks) for f in ("kwh", "deco", "billed")}
+        h, d = sum(H[k] for k in ks), sum(D[k] for k in ks)
+        lamps_kwh = c["kwh"] - c["deco"]
+        useful = lamps_kwh * (1 - LOSS)
+        led_kw = u["led_w"] / 1000
+        rest = useful - led_kw * h
+        old_astro = max(rest, 0) * 1000 / (h * W_OLD) / ACTIVE
+        deficit = max(-rest, 0) / (h * led_kw / u["led"]) if u["led"] else 0
+        return {
+            "opstina": u["group"], "mesto": name, "naseleni_mesta": ", ".join(u["members"]), "mesec": m,
+            "merni_mesta": len(u["meters"]), "led": u["led"], "led_kw": round(led_kw, 3), "denovi": d,
+            "nokni_casovi": round(h, 1), "nok_den": round(h / d, 2), "kwh": round(c["kwh"], 2), "kwh_ukras": round(c["deco"], 1),
+            "kwh_zagubi": round(lamps_kwh * LOSS, 1), "kwh_korisno": round(useful, 1), "kwh_led_nok": round(led_kw * h, 1),
+            "led_casovi_den": round(useful / led_kw / d, 2) if led_kw else None,
+            "stari_postaveni": round(old_astro), "led_ne_svetat": round(deficit),
+            "fakturirano_den": round(c["billed"]),
+            "status": ("Нема мерно место" if not u["meters"] else "Без потрошувачка" if not c["kwh"] else
+                       "Нема LED во списокот" if not u["led"] else "Помалку од LED цела ноќ" if rest < 0 else "Повеќе од LED цела ноќ"),
+        }
 
     rows = []
     for name, u in units.items():
         if name.startswith("Непознато") and not u["meters"]:
             continue
         for m in months + ["all"]:
-            ks = months if m == "all" else [m]
-            c = {f: sum(comp[name, k][f] for k in ks) for f in ("kwh", "const", "deco", "night")}
-            h = sum(H[k] for k in ks)
-            e_led, rest, active, installed, deficit = estimate(c["night"] * (1 - LOSS), u["led"], u["led_w"], h)
-            rows.append({
-                "opstina": u["group"], "mesto": name, "naseleni_mesta": ", ".join(u["members"]), "mesec": m,
-                "merni_mesta": len(u["meters"]), "led": u["led"], "led_kw": round(u["led_w"] / 1000, 3),
-                "nokni_casovi": round(h, 1), "kwh": round(c["kwh"], 2), "kwh_postojano": round(c["const"], 1), "kwh_ukras": round(c["deco"], 1),
-                "kwh_nokno": round(c["night"], 1), "kwh_zagubi": round(c["night"] * LOSS, 1), "kwh_led": round(e_led, 1), "ostatok_kwh": round(rest, 1),
-                "stari_aktivni": round(active), "stari_postaveni": round(installed), "led_ne_svetat": round(deficit),
-                "udel_stari": round(installed / (installed + u["led"]), 4) if installed + u["led"] else None,
-                "status": status(c["kwh"], u["led"], rest, len(u["meters"])),
-            })
+            rows.append(unit_row(name, u, m, months if m == "all" else [m]))
+
+    def group_old(g):
+        if g == "Вкупно":
+            return sum(group_old(x) for x in GROUPS)
+        led = sum(u["led"] for u in units.values() if u["group"] == g)
+        s = float(shares[g]["udel_stari"])
+        return led * s / (1 - s)
 
     by_group = []
     for g in GROUPS + ["Вкупно"]:
+        old_n = group_old(g)
         for m in months + ["all"]:
             rs = [r for r in rows if r["mesec"] == m and (g == "Вкупно" or r["opstina"] == g)]
-            led = sum(r["led"] for r in rs)
-            inst = sum(r["stari_postaveni"] for r in rs)
-            h = sum(H[k] for k in (months if m == "all" else [m]))
-            net = max(0.0, sum(r["kwh_nokno"] - r["kwh_zagubi"] - r["kwh_led"] for r in rs)) * 1000 / (h * W_OLD) / ACTIVE
+            h, d = rs[0]["nokni_casovi"], rs[0]["denovi"]
+            led, led_kw = sum(r["led"] for r in rs), sum(r["led_kw"] for r in rs)
+            kwh, deco, useful = (sum(r[f] for r in rs) for f in ("kwh", "kwh_ukras", "kwh_korisno"))
+            fakt = sum(r["fakturirano_den"] for r in rs)
+            p_kw = led_kw + old_n * W_OLD * ACTIVE / 1000
+            hours = useful / p_kw
+            save_useful = max(0.0, useful - p_kw * h)
+            save_kwh = save_useful / (1 - LOSS)
+            h2 = h + EXTRA_MAX * d
             by_group.append({
-                "opstina": g, "mesec": m, "led": led, "kwh": round(sum(r["kwh"] for r in rs), 1),
-                "kwh_postojano": round(sum(r["kwh_postojano"] for r in rs), 1), "kwh_ukras": round(sum(r["kwh_ukras"] for r in rs), 1),
-                "kwh_nokno": round(sum(r["kwh_nokno"] for r in rs), 1), "kwh_zagubi": round(sum(r["kwh_zagubi"] for r in rs), 1), "kwh_led": round(sum(r["kwh_led"] for r in rs), 1),
-                "ostatok_kwh": round(sum(max(r["ostatok_kwh"], 0) for r in rs), 1),
-                "stari_aktivni": sum(r["stari_aktivni"] for r in rs), "stari_postaveni": inst,
-                "led_ne_svetat": sum(r["led_ne_svetat"] for r in rs),
-                "ostatok_neto": round(max(0.0, sum(r["kwh_nokno"] - r["kwh_zagubi"] - r["kwh_led"] for r in rs)), 1),
-                "stari_neto": round(net), "udel_stari": round(net / (net + led), 4) if net + led else None,
+                "opstina": g, "mesec": m, "denovi": d, "led": led, "led_kw": round(led_kw, 2),
+                "stari_procenka": round(old_n), "moknost_kw": round(p_kw, 2),
+                "kwh": round(kwh, 1), "kwh_ukras": round(deco, 1), "kwh_zagubi": round((kwh - deco) * LOSS, 1), "kwh_korisno": round(useful, 1),
+                "kwh_led_nok": round(led_kw * h, 1), "kwh_stari_nok": round(old_n * W_OLD * ACTIVE * h / 1000, 1),
+                "kwh_vishok": round(useful - p_kw * h, 1),
+                "nokni_casovi": round(h, 1), "nok_den": round(h / d, 2), "casovi": round(hours, 1), "casovi_den": round(hours / d, 2),
+                "vishok_den": round(hours / d - h / d, 2),
+                "ushteda_kwh": round(save_kwh), "ushteda_den": round(save_kwh * (fakt / kwh) if kwh else 0),
+                "stari_potrebni_nok": round(max(0.0, useful - led_kw * h) * 1000 / (h * W_OLD) / ACTIVE),
+                "stari_potrebni_nok2": round(max(0.0, useful - led_kw * h2) * 1000 / (h2 * W_OLD) / ACTIVE),
+                "ocenka": "можно" if hours / d - h / d <= EXTRA_MAX + 0.5 else "невозможно со оваа моќност",
             })
 
-    guesses = {r["opstina"]: r for r in read("procenki.csv")}
     compare = []
     for g in GROUPS + ["Вкупно"]:
         y = next(r for r in by_group if r["opstina"] == g and r["mesec"] == "all")
-        monthly = [r["stari_neto"] for r in by_group if r["opstina"] == g and r["mesec"] != "all"]
-        if g == "Вкупно":
-            guess_n = sum(c["procenka_stari"] for c in compare)
-            share = guess_n / (guess_n + y["led"])
-            note = "збир; ваша вкупна проценка: над " + f"{float(a['stari_procenka_vkupno']):.0f}"
-        else:
-            share = float(guesses[g]["udel_stari"])
-            guess_n = round(y["led"] * share / (1 - share))
-            note = guesses[g]["zapis"]
-        kwh_guess = guess_n * ACTIVE * W_OLD * H_YEAR(H) / 1000
+        monthly = [r["vishok_den"] for r in by_group if r["opstina"] == g and r["mesec"] != "all"]
         compare.append({
-            "opstina": g, "led": y["led"], "presmetani_stari": y["stari_neto"], "stari_bruto": y["stari_postaveni"], "presmetan_udel": y["udel_stari"],
-            "stari_min_mesec": min(monthly), "stari_max_mesec": max(monthly),
-            "procenka_udel": round(share, 4), "procenka_zapis": note, "procenka_stari": guess_n,
-            "kwh": y["kwh"], "kwh_postojano": y["kwh_postojano"], "kwh_ukras": y["kwh_ukras"],
-            "ostatok_kwh": round(max(0.0, y["kwh_nokno"] - y["kwh_zagubi"] - y["kwh_led"]), 1), "kwh_po_procenka": round(kwh_guess),
-            "neobjasneti_kwh": round(max(0.0, y["kwh_nokno"] - y["kwh_zagubi"] - y["kwh_led"]) - kwh_guess),
-            "potrebna_moknost_w": round(max(0.0, y["kwh_nokno"] - y["kwh_zagubi"] - y["kwh_led"]) * 1000 / (H_YEAR(H) * ACTIVE * guess_n), 1) if guess_n else None,
+            "opstina": g, "led": y["led"], "procenka_zapis": shares[g]["zapis"] if g in shares else "збир (ваша проценка: над " + a["stari_procenka_vkupno"] + ")",
+            "procenka_udel": float(shares[g]["udel_stari"]) if g in shares else round(y["stari_procenka"] / (y["stari_procenka"] + y["led"]), 4),
+            "stari_procenka": y["stari_procenka"], "moknost_kw": y["moknost_kw"], "casovi_den": y["casovi_den"], "nok_den": y["nok_den"],
+            "vishok_den": y["vishok_den"], "vishok_min": min(monthly), "vishok_max": max(monthly),
+            "stari_potrebni_nok": y["stari_potrebni_nok"], "stari_potrebni_nok2": y["stari_potrebni_nok2"],
+            "ushteda_kwh": y["ushteda_kwh"], "ushteda_den": y["ushteda_den"], "ocenka": y["ocenka"],
         })
     return a, months, rows, by_group, compare, sorted(profiles, key=lambda p: (GROUPS.index(p["opstina"]), p["mesto"], -p["kwh"]))
 
@@ -263,29 +262,25 @@ def write_xlsx(a, months, rows, by_group, compare, profiles):
     ws = wb.active
     ws.title = "Претпоставки"
     lines = [
-        ("Работна анализа на број на светилки – Општина Кичево (јули 2025 – јуни 2026)", None),
-        ("Ова е ориентациона анализа со импровизирани претпоставки. Се дополнува со проверените мерни места и населени места.", None),
+        ("Работна анализа на улично осветлување – Општина Кичево (јули 2025 – јуни 2026), верзија 3: модел „часовник“", None),
+        ("Ориентациона анализа со импровизирани претпоставки. Се дополнува со проверените мерни места и населени места.", None),
         ("", None),
         ("Претпоставка", "Вредност"),
-        ("LED светилки заменети со ЈПП (список)", a["led_vkupno"]),
-        ("LED светат од зајдисонце до изгрејсонце со полна моќност (удел од ноќта)", a["led_rabota"]),
+        ("LED светилки заменети со ЈПП (список), 100 % исправни", a["led_vkupno"]),
         ("Моќност на стара светилка со LED сијалица (W)", a["stari_watt"]),
         ("Удел на активни стари светилки", a["stari_aktivni"]),
         ("Ваша проценка за вкупно незаменети стари светилки (над)", a["stari_procenka_vkupno"]),
-        ("Новогодишно украсување на мерните места во градот", a["ukrasuvanje"]),
-        ("Загуби по броилото (удел од ноќната енергија)", a["zagubi"]),
+        ("Загуби по броилото (удел од фактурираните kWh)", a["zagubi"]),
+        ("Новогодишно украсување (само броилата од листот „Украсување“)", a["ukrasuvanje"]),
         ("", None),
-        ("Пресметка (верзија 2: потрошувачката на секое мерно место се дели на три дела)", None),
-        ("1. За секое мерно место: kWh по месец ≈ ноќна моќност × ноќни часови + постојана моќност × 24 ч × денови (без декември и јануари).", None),
-        ("   Постојаниот дел троши и дење: светилки што светат дење или други потрошувачи на ормарот (згради, пумпи, бензински станици).", None),
-        ("2. Украсување: во градот Кичево, вишокот во декември и јануари (15.12–15.01) над поделбата од чекор 1.", None),
-        ("3. Ноќна енергија = фактурирани kWh − постојан дел − украсување. Од неа се одбиваат загубите по броилото (кабли до светилките, уреди во ормарите). Само остатокот се споредува со светилките.", None),
-        ("4. E_LED = вкупна моќност на LED светилките × ноќни часови (зајдисонце–изгрејсонце за Кичево); остаток = ноќна енергија − E_LED", None),
-        ("5. Активни стари светилки = остаток ÷ (ноќни часови × моќност на стара светилка); поставени = активни ÷ удел на активни", None),
-        ("6. Ако остатокот е негативен: дел од LED не светат („LED што не светат“).", None),
-        ("   Нето по поранешна општина: вишокот и недостигот на сите места се сметаат заедно, па грешките во поврзувањето мерно место → село се поништуваат.", None),
-        ("   Бруто: збир само на вишоците по места (поголем, зависи од точноста на поврзувањето).", None),
-        ("7. Вашите проценки по поранешна општина се споредуваат само на крајот (лист „Споредба со проценки“).", None),
+        ("Пресметка за секоја поранешна општина и месец", None),
+        ("1. Сите фактурирани kWh, освен украсувањето, ги трошат светилките; светат само кога дозволува часовникот.", None),
+        ("2. Корисни kWh = (kWh − украсување) × (1 − загуби).", None),
+        ("3. Моќност = LED од ЈПП + стари светилки (ваша проценка по општина) × 9 W × удел активни.", None),
+        ("4. Часови на ден = корисни kWh ÷ моќност ÷ денови. Се споредува со ноќта (зајдисонце–изгрејсонце за Кичево).", None),
+        ("5. Вишокот над ноќта е можна заштеда ако часовниците се наместат точно (kWh и денари по фактурираната цена).", None),
+        ("6. Обратна проверка: колку стари светилки би требале ако светилките светат точно ноќта, односно до 2 часа подолго.", None),
+        ("7. „Невозможно со оваа моќност“: потребни се повеќе од 2,5 часа дневно над ноќта, па инсталираната моќност мора да е поголема.", None),
         ("", None),
         ("Ноќни часови по месец", None),
     ]
@@ -293,54 +288,70 @@ def write_xlsx(a, months, rows, by_group, compare, profiles):
     for l in lines:
         ws.append([l[0], num(l[1])])
     for m in months:
-        h = next(r["nokni_casovi"] for r in rows if r["mesec"] == m)
-        ws.append([m, h])
-    ws.column_dimensions["A"].width = 95
+        r = next(r for r in rows if r["mesec"] == m)
+        ws.append([m, r["nokni_casovi"]])
+    ws.column_dimensions["A"].width = 110
     ws.column_dimensions["B"].width = 14
     ws["A1"].font = Font(bold=True, size=13)
-    ws["A4"].font = ws["B4"].font = HEAD
-    ws["A11"].font = ws["A24"].font = HEAD
+    for cell in ("A4", "B4", "A12", "A21"):
+        ws[cell].font = HEAD
 
     mh = [SHORT[m[5:]] + " " + m[2:4] for m in months]
-    g_all = {(r["opstina"], r["mesec"]): r for r in by_group}
-    sheet(wb, "По општина и месец", ["Поранешна општина", "LED (ЈПП)"] + ["Стари (нето) " + h for h in mh] + ["Стари нето (12 мес.)", "Удел стари", "Стари бруто (збир по места)",
-          "LED што не светат (збир по места)", "kWh 12 мес.", "Постојан дел kWh", "Украсување kWh", "Ноќна енергија kWh", "kWh LED", "Остаток kWh (позитивен по места)"],
-          [[g, g_all[g, "all"]["led"]] + [g_all[g, m]["stari_neto"] for m in months] +
-           [g_all[g, "all"][k] for k in ("stari_neto", "udel_stari", "stari_postaveni", "led_ne_svetat", "kwh", "kwh_postojano", "kwh_ukras", "kwh_nokno", "kwh_led", "ostatok_kwh")]
-           for g in GROUPS + ["Вкупно"]], [20, 10] + [9] * len(months) + [12, 10, 12, 14, 12, 12, 12, 12, 12, 14])
+    g = {(r["opstina"], r["mesec"]): r for r in by_group}
+    G = GROUPS + ["Вкупно"]
+    sheet(wb, "Часови по општина", ["Поранешна општина", "LED", "Стари (проценка)", "Моќност kW"] + ["Ч/ден " + h for h in mh] +
+          ["Ч/ден (12 мес.)", "Ноќ ч/ден", "Вишок ч/ден", "Оценка"],
+          [[x, g[x, "all"]["led"], g[x, "all"]["stari_procenka"], g[x, "all"]["moknost_kw"]] + [g[x, m]["casovi_den"] for m in months] +
+           [g[x, "all"]["casovi_den"], g[x, "all"]["nok_den"], g[x, "all"]["vishok_den"], g[x, "all"]["ocenka"]] for x in G],
+          [18, 8, 10, 10] + [8] * len(months) + [10, 9, 10, 26])
+    sheet(wb, "Енергија по општина", ["Поранешна општина", "kWh 12 мес.", "Украсување", "Загуби", "Корисни kWh", "LED цела ноќ", "Стари цела ноќ",
+                                     "Вишок (подолго од ноќта)", "Заштеда kWh", "Заштеда ден.", "Стари потребни (точно ноќ)", "Стари потребни (ноќ + 2 ч)"],
+          [[x] + [g[x, "all"][k] for k in ("kwh", "kwh_ukras", "kwh_zagubi", "kwh_korisno", "kwh_led_nok", "kwh_stari_nok", "kwh_vishok",
+                                          "ushteda_kwh", "ushteda_den", "stari_potrebni_nok", "stari_potrebni_nok2")] for x in G],
+          [18, 12, 11, 11, 12, 12, 12, 13, 12, 12, 13, 13])
+    sheet(wb, "Детално по општина", ["Поранешна општина", "Месец", "Денови", "Ноќни часови", "kWh", "Украсување", "Загуби", "Корисни kWh", "LED цела ноќ",
+                                    "Стари цела ноќ", "Вишок kWh", "Часови на ден", "Ноќ ч/ден", "Вишок ч/ден", "Заштеда kWh", "Заштеда ден.", "Оценка"],
+          [[r["opstina"], r["mesec"], r["denovi"], r["nokni_casovi"], r["kwh"], r["kwh_ukras"], r["kwh_zagubi"], r["kwh_korisno"], r["kwh_led_nok"],
+            r["kwh_stari_nok"], r["kwh_vishok"], r["casovi_den"], r["nok_den"], r["vishok_den"], r["ushteda_kwh"], r["ushteda_den"], r["ocenka"]]
+           for r in by_group if r["mesec"] != "all"], [16, 9, 7, 9, 11, 10, 10, 11, 11, 11, 11, 9, 9, 9, 11, 11, 24])
 
     u_all = {(r["mesto"], r["mesec"]): r for r in rows}
     names = sorted({r["mesto"] for r in rows}, key=lambda n: (GROUPS.index(u_all[n, "all"]["opstina"]), n.startswith("Непознато"), -u_all[n, "all"]["kwh"]))
-    sheet(wb, "По место и месец", ["Поранешна општина", "Населено место", "Мерни места", "LED (ЈПП)"] + ["Стари " + h for h in mh] +
-          ["Стари (12 мес.)", "Удел стари", "LED што не светат", "kWh 12 мес.", "Постојан дел kWh", "Украсување kWh", "Ноќна енергија kWh", "kWh LED", "Остаток kWh", "Статус", "Населени места во единицата"],
+    sheet(wb, "По место и месец", ["Поранешна општина", "Населено место", "Мерни места", "LED"] + ["Стари* " + h for h in mh] +
+          ["Стари* (12 мес.)", "LED што не светат", "LED часови/ден", "Ноќ ч/ден", "kWh 12 мес.", "Украсување", "Статус", "Населени места"],
           [[u_all[n, "all"]["opstina"], n, u_all[n, "all"]["merni_mesta"], u_all[n, "all"]["led"]] + [u_all[n, m]["stari_postaveni"] for m in months] +
-           [u_all[n, "all"][k] for k in ("stari_postaveni", "udel_stari", "led_ne_svetat", "kwh", "kwh_postojano", "kwh_ukras", "kwh_nokno", "kwh_led", "ostatok_kwh", "status", "naseleni_mesta")]
-           for n in names], [14, 26, 8, 8] + [8] * len(months) + [10, 9, 10, 11, 11, 11, 11, 11, 11, 22, 36])
+           [u_all[n, "all"][k] for k in ("stari_postaveni", "led_ne_svetat", "led_casovi_den", "nok_den", "kwh", "kwh_ukras", "status", "naseleni_mesta")]
+           for n in names], [14, 26, 8, 8] + [8] * len(months) + [10, 10, 10, 9, 11, 10, 24, 36])
+    ws2 = wb["По место и месец"]
+    ws2.append([])
+    ws2.append(["* Стари = стари светилки (9 W, 80 % активни) потребни ако светилките светат точно од зајдисонце до изгрејсонце. LED часови/ден = колку би светеле LED ако се единствени."])
 
-    sheet(wb, "Детално по месец", ["Поранешна општина", "Населено место", "Месец", "Мерни места", "LED", "LED kW", "Ноќни часови", "kWh", "Постојан дел kWh", "Украсување kWh",
-                                   "Ноќна енергија kWh", "kWh LED", "Остаток kWh", "Активни стари", "Поставени стари", "LED што не светат", "Удел стари", "Статус"],
-          [[r["opstina"], r["mesto"], r["mesec"], r["merni_mesta"], r["led"], r["led_kw"], r["nokni_casovi"], r["kwh"], r["kwh_postojano"], r["kwh_ukras"], r["kwh_nokno"],
-            r["kwh_led"], r["ostatok_kwh"], r["stari_aktivni"], r["stari_postaveni"], r["led_ne_svetat"], r["udel_stari"], r["status"]] for r in rows if r["mesec"] != "all"],
-          [14, 26, 9, 8, 7, 8, 9, 10, 10, 10, 10, 10, 10, 9, 9, 9, 9, 22])
+    sheet(wb, "Мерни места – профил", ["Поранешна општина", "Населено место", "Мерно место", "Адреса", "Украсување", "kWh 12 мес.", "Ноќна моќност kW",
+                                       "Дневен рамен дел kWh/ден", "Удел рамен дел", "Зима ÷ лето (kWh по ден)", "Профил"],
+          [[p["opstina"], p["mesto"], p["meter"], p["adresa"], p["ukras"], p["kwh"], p["nokna_moknost_kw"], p["dneven_del_kwh"], p["udel_ramen"], p["zima_leto"], p["profil"]]
+           for p in profiles], [14, 26, 17, 36, 9, 11, 11, 11, 10, 12, 14])
+    wsp = wb["Мерни места – профил"]
+    wsp.append([])
+    wsp.append(["Профил: „следи ноќта“ – потрошувачката по ден расте зиме и опаѓа лете (астрономски часовник); „рамен“ – иста секој месец (часовник на фиксни часови, без летно/зимско време или процена на читање); „мешан“ – меѓу двете."])
 
-    sheet(wb, "Мерни места – профил", ["Поранешна општина", "Населено место", "Мерно место", "Адреса", "kWh 12 мес.", "Ноќна моќност kW", "Постојана моќност kW",
-                                       "Удел постојан дел", "Зима ÷ лето (kWh по ден)", "Профил"],
-          [[p["opstina"], p["mesto"], p["meter"], p["adresa"], p["kwh"], p["nokna_moknost_kw"], p["postojana_moknost_kw"], p["udel_postojano"], p["zima_leto"], p["profil"]] for p in profiles],
-          [14, 26, 17, 36, 11, 11, 11, 11, 13, 14])
-
-    sheet(wb, "Споредба со проценки", ["Поранешна општина", "LED (ЈПП)", "Пресметани стари, нето (12 мес.)", "Најмалку во месец", "Најмногу во месец", "Пресметан удел стари",
-                                       "Ваша проценка (удел)", "Запис", "Стари според проценката", "Ноќна енергија над LED kWh", "kWh за стари според проценката", "Необјаснети kWh", "Потребна моќност по стара светилка (W)"],
-          [[c["opstina"], c["led"], c["presmetani_stari"], c["stari_min_mesec"], c["stari_max_mesec"], c["presmetan_udel"], c["procenka_udel"], c["procenka_zapis"],
-            c["procenka_stari"], c["ostatok_kwh"], c["kwh_po_procenka"], c["neobjasneti_kwh"], c["potrebna_moknost_w"]] for c in compare],
-          [18, 10, 14, 11, 11, 12, 12, 26, 13, 12, 14, 12, 18])
+    sheet(wb, "Споредба со проценки", ["Поранешна општина", "LED", "Ваша проценка", "Удел стари", "Стари (проценка)", "Моќност kW", "Часови на ден",
+                                       "Ноќ ч/ден", "Вишок ч/ден", "Вишок најмалку (месец)", "Вишок најмногу (месец)", "Стари потребни (точно ноќ)",
+                                       "Стари потребни (ноќ + 2 ч)", "Заштеда kWh/год.", "Заштеда ден./год.", "Оценка"],
+          [[c["opstina"], c["led"], c["procenka_zapis"], c["procenka_udel"], c["stari_procenka"], c["moknost_kw"], c["casovi_den"], c["nok_den"],
+            c["vishok_den"], c["vishok_min"], c["vishok_max"], c["stari_potrebni_nok"], c["stari_potrebni_nok2"], c["ushteda_kwh"], c["ushteda_den"], c["ocenka"]]
+           for c in compare], [18, 8, 24, 9, 11, 10, 9, 9, 9, 11, 11, 13, 13, 12, 12, 26])
+    prof = {p["meter"]: p for p in profiles}
+    sheet(wb, "Украсување", ["Мерно место", "Адреса", "Забелешка", "kWh 12 мес.", "kWh украсување (дек.+јан.)"],
+          [[d["meter"], d["adresa"], d["zabeleska"], prof.get(d["meter"], {}).get("kwh"), prof.get(d["meter"], {}).get("kwh_ukras")] for d in read("ukrasi.csv")],
+          [17, 36, 60, 12, 14])
     for wsx in wb.worksheets[1:]:
         for col in wsx.iter_cols(min_row=2):
             for c in col:
                 head = str(wsx.cell(1, c.column).value)
                 if isinstance(c.value, float) and 0 <= c.value <= 1 and ("Удел" in head or "удел" in head):
                     c.number_format = "0%"
-                elif isinstance(c.value, float) and ("kW" in head and "kWh" not in head or "÷" in head):
-                    c.number_format = "0.00"
+                elif isinstance(c.value, float) and ("ч/ден" in head.lower() or "Ч/ден" in head or "часови/ден" in head.lower() or "kW" in head and "kWh" not in head or "÷" in head or "Часови на ден" in head):
+                    c.number_format = "0.0"
                 elif isinstance(c.value, (int, float)):
                     c.number_format = "#,##0"
     wb.save(IZLEZ / "Анализа_светилки.xlsx")
@@ -355,8 +366,9 @@ def main():
     write_csv("merni_mesta_profil.csv", profiles)
     write_xlsx(a, months, rows, by_group, compare, profiles)
     for c in compare:
-        print(f"{c['opstina']:11} LED {c['led']:5}  стари {c['presmetani_stari']:6} ({c['stari_min_mesec']}–{c['stari_max_mesec']})  удел {c['presmetan_udel']:.0%}  "
-              f"| проценка {c['procenka_udel']:.0%} → {c['procenka_stari']:5}  потребни W {c['potrebna_moknost_w']}")
+        print(f"{c['opstina']:11} LED {c['led']:5} стари {c['stari_procenka']:5} P {c['moknost_kw']:6.1f} kW | {c['casovi_den']:5.1f} ч/ден (ноќ {c['nok_den']:.1f}, "
+              f"вишок {c['vishok_den']:+.1f}; {c['vishok_min']:+.1f}…{c['vishok_max']:+.1f}) | потребни стари {c['stari_potrebni_nok']}/{c['stari_potrebni_nok2']} | "
+              f"заштеда {c['ushteda_kwh']:,} kWh {c['ushteda_den']:,} ден. | {c['ocenka']}")
 
 
 if __name__ == "__main__":
