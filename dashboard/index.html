@@ -40,7 +40,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 <script>
 /* Мала замена за dash API-то на Claude-дашбордот: сите пресметки локално. */
 (function () {
-  const raw = { items: d3.csvParse(window.KC_ITEMS_CSV) };
+  const raw = { items: d3.csvParse(window.KC_CSV.stavki), lamps: d3.csvParse(window.KC_CSV.svetilki), mapping: d3.csvParse(window.KC_CSV.mapiranje) };
   const results = {};
   const listeners = [];
   const defaults = { month: 'all', cat: 'all', area: 'all', measure: 'kwh' };
@@ -162,6 +162,18 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 .kc-fail::before { content: ""; width: 0.375rem; height: 0.375rem; border-radius: 50%; background: var(--color-bad); }
 .kc [data-dash-source-state=empty] { color: transparent; }
 .kc [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+.kc-table td.kc-r-less { background: color-mix(in srgb, var(--color-warn) 16%, transparent); }
+.kc-table td.kc-r-ok { background: color-mix(in srgb, var(--color-ok) 16%, transparent); }
+.kc-table td.kc-r-more { background: color-mix(in srgb, var(--color-bad) 14%, transparent); }
+.kc-table td.kc-r-much { background: color-mix(in srgb, var(--color-bad) 30%, transparent); }
+.kc-table td.kc-r-zero { color: var(--color-fg-muted); }
+.kc-table td.kc-sticky, .kc-table th.kc-sticky { position: sticky; left: 0; background: var(--color-panel); z-index: 1; }
+.kc-table th.kc-sticky { z-index: 2; }
+.kc-status { white-space: nowrap; }
+.kc-status.kc-s-less { color: var(--color-warn); }
+.kc-status.kc-s-ok { color: var(--color-ok); }
+.kc-status.kc-s-more, .kc-status.kc-s-much { color: var(--color-bad); }
+.kc details summary { cursor: pointer; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 @media (max-width: 640px) { .kc-hide-sm { display: none; } }
 </style>
 
@@ -176,6 +188,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
       <button class="kc-tab" role="tab" id="tab-pregled" aria-controls="pregled" aria-selected="true">Преглед</button>
       <button class="kc-tab" role="tab" id="tab-sporedba" aria-controls="sporedba" aria-selected="false">Споредба на kWh</button>
       <button class="kc-tab" role="tab" id="tab-chasovnik" aria-controls="chasovnik" aria-selected="false">Временски часовник</button>
+      <button class="kc-tab" role="tab" id="tab-svetilki" aria-controls="svetilki" aria-selected="false">Светилки</button>
       <button class="kc-tab" role="tab" id="tab-mesta" aria-controls="mesta" aria-selected="false">Мерни места</button>
       <button class="kc-tab" role="tab" id="tab-efikasnost" aria-controls="efikasnost" aria-selected="false">Ефикасност и аномалии</button>
     </div>
@@ -394,6 +407,97 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
           <li><b>Заштедата</b> е реалната потрошувачка минус потрошувачката со часовникот, по просечната фактурирана цена на подрачјето за тој месец. Негативна вредност значи дека часовникот би трошел повеќе од сегашниот режим.</li>
           <li>Кога реалната потрошувачка е над „само зајдисонце–изгрејсонце“, светилките најверојатно светат пред зајдисонце или по изгрејсонце (фотоќелии, рачни прекинувачи, светење дење).</li>
         </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- СВЕТИЛКИ -->
+  <section id="svetilki" role="tabpanel" aria-labelledby="tab-svetilki" class="kc-page" hidden>
+    <div class="kc-card" id="karta-svetilki-uvod">
+      <div class="kc-card-top">
+        <div class="kc-head">
+          <h3>Колку светилки светат, наспроти списокот на поставени светилки</h3>
+          <p class="kc-note">Мерните места за улично осветлување (СН/НН LV1.1) се обединети по населено место од списокот на поставени LED светилки. За секој месец: <b>проценети светилки = kWh × 1000 ÷ (ноќни часови × просечна моќност на светилка во W)</b>. Ноќните часови се од зајдисонце до изгрејсонце за Кичево. Резултатот е ориентационен: тоа е бројот на светилки што, ако светат цела ноќ со полна моќност, би ја потрошиле фактурираната енергија.</p>
+        </div>
+        <label class="kc-field">Поранешна општина
+          <select id="l-group" data-source="lamp_est"></select>
+        </label>
+      </div>
+    </div>
+
+    <div class="kc-kpis" id="l-kpis">
+      <div class="kc-kpi"><span class="kc-kpi-l">Поставени светилки (список)</span><span class="kc-kpi-v dash-skeleton" id="lk-n" data-source="lamp_est" data-field="lamps">—</span><span class="kc-kpi-u" id="lk-n-u">LED светилки</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Проценети што светат</span><span class="kc-kpi-v dash-skeleton" id="lk-est" data-source="lamp_est" data-field="est_lamps">—</span><span class="kc-kpi-u" id="lk-est-u">светилки, цела ноќ</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Однос проценети ÷ поставени</span><span class="kc-kpi-v dash-skeleton" id="lk-ratio" data-source="lamp_est" data-field="ratio">—</span><span class="kc-kpi-u">100 % = се совпаѓа</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Места што се совпаѓаат (±25 %)</span><span class="kc-kpi-v dash-skeleton" id="lk-ok" data-source="lamp_est" data-field="cnt_ok">—</span><span class="kc-kpi-u" id="lk-ok-u">од населените места со мерно место</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">kWh надвор од списокот</span><span class="kc-kpi-v dash-skeleton" id="lk-out" data-source="lamp_est" data-field="kwh">—</span><span class="kc-kpi-u">мерни места во села што ги нема во списокот</span></div>
+    </div>
+
+    <div class="kc-grid">
+      <div class="kc-card" id="karta-odnos">
+        <div class="kc-head"><h3 id="h-odnos">Однос по населено место</h3><p class="kc-note">Проценети ÷ поставени светилки. Испрекинатата линија е 100 %. Над неа: се троши повеќе отколку што би трошеле попишаните LED светилки; под неа: дел од светилките не светат. Кликнете на место за детали.</p></div>
+        <div class="kc-legend" id="lg-odnos"></div>
+        <div class="kc-chart dash-skeleton" id="ch-odnos" data-source="lamp_est"></div>
+      </div>
+
+      <div class="kc-card" id="karta-mesto">
+        <div class="kc-head"><h3 id="h-mesto">Населено место по месеци</h3><p class="kc-note" id="mesto-note">Проценети светилки по месец наспроти бројот во списокот.</p></div>
+        <dl class="kc-facts" id="mesto-facts">
+          <div><dt>Поставени</dt><dd id="mf-n" data-source="lamp_est" data-field="lamps">—</dd></div>
+          <div><dt>Просечна моќност</dt><dd id="mf-w" data-source="lamp_est" data-field="watt_avg">—</dd></div>
+          <div><dt>Мерни места</dt><dd id="mf-m" data-source="lamp_est" data-field="meters">—</dd></div>
+          <div><dt>kWh за 12 месеци</dt><dd id="mf-k" data-source="lamp_est" data-field="kwh">—</dd></div>
+          <div><dt>Часови по светилка</dt><dd id="mf-h" data-source="lamp_est" data-field="implied_hours">—</dd></div>
+          <div><dt>Ноќни часови</dt><dd id="mf-nh" data-source="lamp_est" data-field="night_hours">—</dd></div>
+        </dl>
+        <div class="kc-legend" id="lg-mesto"></div>
+        <div class="kc-chart kc-short dash-skeleton" id="ch-mesto" data-source="lamp_est"></div>
+      </div>
+
+      <div class="kc-card kc-wide" id="karta-pivot-svetilki">
+        <div class="kc-head"><h3>Проценети светилки по месец</h3><p class="kc-note">Боја на ќелијата: жолто = под 75 % од поставените, зелено = 75–125 %, црвено = над 125 %, потемно црвено = над 200 %.</p></div>
+        <div class="kc-tablebox">
+          <table class="kc-table" id="t-lamps"><thead></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <div class="kc-card" id="karta-nadvor">
+        <div class="kc-head"><h3>Мерни места надвор од списокот</h3><p class="kc-note">Улично осветлување во места што ги нема во списокот на светилки (на пр. повеќето села на Вранештица). Тие трошат енергија, но не можат да се споредат.</p></div>
+        <div class="kc-tablebox" style="max-height: 24rem">
+          <table class="kc-table" id="t-outside" data-source="lamp_outside" data-row-key="meter">
+            <thead><tr>
+              <th data-field="meter"><span class="kc-th">Мерно место</span></th>
+              <th data-field="address"><span class="kc-th">Адреса</span></th>
+              <th data-field="kwh" class="kc-num"><span class="kc-th">kWh / 12 мес.</span></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="kc-card" id="karta-tolkuvanje">
+        <div class="kc-head"><h3>Како да се толкува</h3></div>
+        <ul class="kc-defs">
+          <li><b>Околу 100 %</b>: потрошувачката одговара на попишаните LED светилки што светат цела ноќ.</li>
+          <li><b>Над 125 %</b>: на мерното место има повеќе или посилни светилки од пописот (на пр. стари натриумови светилки од 70–150 W), светилки што светат и дење, или други потрошувачи. Однос околу 300 % одговара на стари светилки од околу 80 W наместо LED од 25,9 W.</li>
+          <li><b>Под 75 %</b>: дел од светилките не светат, се исклучени дел од ноќта, или дел од нив се на мерно место што не е препознаено.</li>
+          <li>Нагли скокови во еден месец (на пр. Премка во јануари–февруари) најчесто се корекции на читањето на броилото, а не вистинска промена.</li>
+          <li>Поврзувањето мерно место → населено место е според адресата; каде што адресата е скратена (Г. Црско, Д. Дол, Колбари, Ман. Кнежино, Ман. Св. Пречиста), поврзувањето е со средна или ниска сигурност. Целата листа е подолу.</li>
+        </ul>
+        <details>
+          <summary>Поврзување мерно место → населено место</summary>
+          <div class="kc-tablebox" style="max-height: 24rem">
+            <table class="kc-table" id="t-map" data-source="mapping" data-row-key="meter">
+              <thead><tr>
+                <th data-field="meter"><span class="kc-th">Мерно место</span></th>
+                <th data-field="address"><span class="kc-th">Адреса</span></th>
+                <th data-field="settlement"><span class="kc-th">Населено место</span></th>
+                <th data-field="certainty"><span class="kc-th">Сигурност</span></th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
       </div>
     </div>
   </section>
@@ -800,6 +904,84 @@ dash.calc('timer_kwh', {
   },
 });
 
+dash.calc('lamp_est', {
+  inputs: ['items', 'mapping', 'lamps', 'sun'],
+  title: 'Проценет број на светилки што светат',
+  description: 'За секое населено место од списокот на светилки и месец: kWh на поврзаните мерни места за улично осветлување, ноќни часови (зајдисонце–изгрејсонце) и просечна моќност; проценети светилки = kWh × 1000 ÷ (ноќни часови × W). Со збирни редови по поранешна општина, вкупно и за мерните места надвор од списокот.',
+  fn: (items, mapping, lamps, sun) => {
+    const names = { 'Јануари': '01', 'Февруари': '02', 'Март': '03', 'Април': '04', 'Мај': '05', 'Јуни': '06', 'Јули': '07', 'Август': '08', 'Септември': '09', 'Октомври': '10', 'Ноември': '11', 'Декември': '12' };
+    const monthKey = (m) => { const [n, y] = String(m).trim().split(/\s+/); return y + '-' + names[n]; };
+    const r1 = (v) => Math.round(v * 10) / 10, r2 = (v) => Math.round(v * 100) / 100, r4 = (v) => Math.round(v * 10000) / 10000;
+    const where = new Map(mapping.map((r) => [String(r.meter), String(r.settlement || '')]));
+    const inv = new Map();
+    for (const l of lamps) {
+      let g = inv.get(l.settlement);
+      if (!g) { g = { group: l.group, n: 0, w: 0 }; inv.set(l.settlement, g); }
+      g.n += Number(l.count); g.w += Number(l.count) * Number(l.watt);
+    }
+    const night = new Map();
+    for (const d of sun) { night.set(d.month, (night.get(d.month) || 0) + d.night); night.set('all', (night.get('all') || 0) + d.night); }
+    const months = [...night.keys()].filter((k) => k !== 'all').sort().concat(['all']);
+    const kwh = new Map(), meters = new Map();
+    for (const r of items) {
+      if (!String(r.category).includes('LV1')) continue;
+      const s = where.get(String(r.meter)) || '__out__';
+      const m = monthKey(r.month), v = Number(r.kwh);
+      for (const mm of [m, 'all']) kwh.set(s + '|' + mm, (kwh.get(s + '|' + mm) || 0) + v);
+      if (!meters.has(s)) meters.set(s, new Set());
+      meters.get(s).add(String(r.meter));
+    }
+    const statusOf = (k, est, n, hasMeter) => !hasMeter ? 'Нема мерно место' : k === 0 ? 'Без потрошувачка' : est / n < 0.75 ? 'Помалку светат' : est / n <= 1.25 ? 'Се совпаѓа' : est / n <= 2 ? 'Повеќе' : 'Многу повеќе';
+    const out = [];
+    const sums = new Map();
+    for (const [s, g] of inv) {
+      const wavg = g.w / g.n, hasMeter = meters.has(s);
+      for (const m of months) {
+        const k = kwh.get(s + '|' + m) || 0, h = night.get(m);
+        const est = k * 1000 / (h * wavg);
+        const status = statusOf(k, est, g.n, hasMeter);
+        out.push({ id: s + '|' + m, level: 'settlement', group: g.group, settlement: s, month: m, meters: hasMeter ? meters.get(s).size : 0, lamps: g.n, watt_avg: r1(wavg), inv_kw: r2(g.w / 1000),
+          kwh: r2(k), night_hours: r1(h), est_lamps: Math.round(est), ratio: r4(est / g.n), implied_hours: r1(k * 1000 / g.w), status });
+        for (const key of [g.group, 'Вкупно']) {
+          const kk = key + '|' + m;
+          let t = sums.get(kk);
+          if (!t) { t = { group: key, month: m, lamps: 0, w: 0, kwh: 0, est: 0, meters: 0, ok: 0, more: 0, less: 0, none: 0, h }; sums.set(kk, t); }
+          t.lamps += g.n; t.w += g.w; t.kwh += k; t.est += est; t.meters += hasMeter ? meters.get(s).size : 0;
+          if (status === 'Се совпаѓа') t.ok += 1; else if (status === 'Повеќе' || status === 'Многу повеќе') t.more += 1; else if (status === 'Помалку светат') t.less += 1; else t.none += 1;
+        }
+      }
+    }
+    for (const t of sums.values()) {
+      out.push({ id: 'Σ ' + t.group + '|' + t.month, level: t.group === 'Вкупно' ? 'total' : 'group', group: t.group, settlement: 'Σ ' + t.group, month: t.month, meters: t.meters, lamps: t.lamps, watt_avg: r1(t.w / t.lamps), inv_kw: r2(t.w / 1000),
+        kwh: r2(t.kwh), night_hours: r1(t.h), est_lamps: Math.round(t.est), ratio: r4(t.est / t.lamps), implied_hours: r1(t.kwh * 1000 / t.w), status: '',
+        cnt_ok: t.ok, cnt_more: t.more, cnt_less: t.less, cnt_none: t.none });
+    }
+    for (const m of months) {
+      const k = kwh.get('__out__|' + m) || 0;
+      out.push({ id: 'Надвор од списокот|' + m, level: 'outside', group: 'Надвор од списокот', settlement: 'Надвор од списокот', month: m, meters: meters.has('__out__') ? meters.get('__out__').size : 0, lamps: 0, watt_avg: null, inv_kw: null,
+        kwh: r2(k), night_hours: r1(night.get(m)), est_lamps: null, ratio: null, implied_hours: null, status: '' });
+    }
+    return out;
+  },
+});
+
+dash.calc('lamp_outside', {
+  inputs: ['items', 'mapping'],
+  title: 'Улично осветлување надвор од списокот',
+  description: 'Мерните места за улично осветлување што не се поврзани со ниедно населено место од списокот на светилки, со kWh за 12 месеци.',
+  fn: (items, mapping) => {
+    const linked = new Map(mapping.map((r) => [String(r.meter), String(r.settlement || '')]));
+    const acc = new Map();
+    for (const r of items) {
+      if (!String(r.category).includes('LV1') || linked.get(String(r.meter))) continue;
+      let g = acc.get(String(r.meter));
+      if (!g) { g = { meter: String(r.meter), address: String(r.address).trim(), kwh: 0 }; acc.set(g.meter, g); }
+      g.address = String(r.address).trim(); g.kwh += Number(r.kwh);
+    }
+    return [...acc.values()].map((g) => ({ ...g, kwh: Math.round(g.kwh * 100) / 100 })).sort((a, b) => b.kwh - a.kwh);
+  },
+});
+
 /* ---------- помошни ---------- */
 const MONTHS = ['2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
 const MNAME = { '01': 'Јануари', '02': 'Февруари', '03': 'Март', '04': 'Април', '05': 'Мај', '06': 'Јуни', '07': 'Јули', '08': 'Август', '09': 'Септември', '10': 'Октомври', '11': 'Ноември', '12': 'Декември' };
@@ -934,6 +1116,7 @@ function monthLines(box, series, o) {
   const tip = tipFor(box);
   const vals = series.flatMap((s) => s.points.map((p) => p.v)).filter((v) => v != null);
   if (!vals.length) return;
+  if (o.ref != null) vals.push(o.ref);
   const lo = o.zero ? 0 : d3.min(vals), hi = d3.max(vals);
   const pad = o.zero ? 0 : (hi - lo) * 0.15 || 0.5;
   const y = d3.scaleLinear([lo - pad, (hi + pad) || 1], [H - 22, 10]).nice();
@@ -943,6 +1126,10 @@ function monthLines(box, series, o) {
   const x = (k) => xb(k) + xb.bandwidth() / 2;
   yAxis(svg, y, ticks, o.axis || o.fmt, ml, W - 4);
   xLabels(svg, xb, MONTHS, shortM, H - 4);
+  if (o.ref != null) {
+    svg.append('line').attr('class', 'kc-ref').attr('x1', ml).attr('x2', W - 4).attr('y1', y(o.ref)).attr('y2', y(o.ref));
+    if (o.refLabel) svg.append('text').attr('class', 'kc-strong').attr('x', W - 6).attr('y', y(o.ref) - 5).attr('text-anchor', 'end').text(o.refLabel);
+  }
   const line = d3.line().defined((p) => p.v != null).x((p) => x(p.k)).y((p) => y(p.v));
   series.forEach((s) => {
     svg.append('path').attr('d', line(s.points)).attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
@@ -965,9 +1152,12 @@ function hBars(box, data, o) {
   const tip = tipFor(box);
   const lw = Math.min(W * 0.36, measure(svg, data.map((d) => d.label)) + 10);
   const vw = measure(svg, data.map((d) => o.fmt(d.value))) + 10;
-  const lo = Math.min(0, d3.min(data, (d) => d.value) || 0), hi = Math.max(0, d3.max(data, (d) => d.value) || 0);
+  const lo = Math.min(0, d3.min(data, (d) => d.value) || 0), hi = Math.max(0, d3.max(data, (d) => d.value) || 0, o.ref || 0);
   const x = d3.scaleLinear([lo, hi || (lo ? 0 : 1)], [lw + (lo < 0 ? vw : 0), W - (hi > 0 || !lo ? vw : 6)]);
   if (lo < 0) svg.append('line').attr('class', 'kc-axis').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 0).attr('y2', H);
+  data.forEach((d, i) => {
+    if (d.active === 'sel') svg.append('rect').attr('x', 0).attr('y', i * row + 4).attr('width', W).attr('height', row).attr('fill', 'var(--color-bg)');
+  });
   data.forEach((d, i) => {
     const yy = i * row + 4;
     const x0 = x(Math.min(0, d.value)), x1 = x(Math.max(0, d.value));
@@ -981,6 +1171,7 @@ function hBars(box, data, o) {
       .on('mouseleave', () => tip.hide())
       .on('click', () => o.onClick && o.onClick(d));
   });
+  if (o.ref != null) svg.append('line').attr('class', 'kc-ref').attr('x1', x(o.ref)).attr('x2', x(o.ref)).attr('y1', 0).attr('y2', H);
 }
 
 function legend(el, items) {
@@ -1025,6 +1216,7 @@ const st = {
   cmpDim: 'area', cmpNorm: 'total', cmpAreas: null, cmpMeters: null,
   mvmA: '2025-07', mvmB: '2026-01', mvmBasis: 'day',
   tOn: 10, tOff: 10, tDim: 'd50',
+  lGroup: 'all', lSel: 'Кичево (град)',
 };
 
 const tabs = [...document.querySelectorAll('.kc-tab')];
@@ -1110,6 +1302,10 @@ document.getElementById('d-cmp').addEventListener('click', () => {
   showTab('sporedba', true);
 });
 
+const lGroup = document.getElementById('l-group');
+lGroup.addEventListener('change', () => { st.lGroup = lGroup.value; draw(); });
+document.getElementById('t-lamps').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-s]'); if (tr) { st.lSel = tr.dataset.s; draw(); document.getElementById('karta-mesto').scrollIntoView({ block: 'nearest' }); } });
+
 const sPct = document.getElementById('s-pct');
 sPct.addEventListener('input', () => { st.pct = Number(sPct.value); draw(); });
 
@@ -1128,6 +1324,7 @@ function draw() {
   if (st.tab === 'pregled') drawOverview(p, cube);
   if (st.tab === 'sporedba') drawCompare(p, cube, dash.data('meters'), dash.data('pairs'));
   if (st.tab === 'chasovnik') drawTimer(p, dash.data('sun'), dash.data('timer'), dash.data('timer_kwh'));
+  if (st.tab === 'svetilki') drawLamps(p, dash.data('lamp_est'), dash.data('lamp_outside'), dash.data('mapping'));
   if (st.tab === 'mesta') drawMeters(p, dash.data('meters'));
   if (st.tab === 'efikasnost') drawEfficiency(p, cube, dash.data('meters'), dash.data('pareto'), dash.data('savings'));
 }
@@ -1497,6 +1694,99 @@ function drawYear(box, days, activeMonth) {
     })
     .on('mouseleave', () => { rule.attr('opacity', 0); tip.hide(); })
     .on('click', (ev) => { const k = at(ev).d.month; dash.setParams({ month: activeMonth === k ? 'all' : k }); });
+}
+
+/* ---------- светилки ---------- */
+const LSTAT = { 'Помалку светат': 'less', 'Се совпаѓа': 'ok', 'Повеќе': 'more', 'Многу повеќе': 'much', 'Без потрошувачка': 'zero', 'Нема мерно место': 'zero' };
+const lampClass = (ratio, kwh) => !kwh ? 'kc-r-zero' : ratio < 0.75 ? 'kc-r-less' : ratio <= 1.25 ? 'kc-r-ok' : ratio <= 2 ? 'kc-r-more' : 'kc-r-much';
+const lampFill = (st) => ({ less: color(1), ok: color(0), more: 'var(--cds-chart-status-critical)', much: 'var(--cds-chart-status-critical)', zero: 'var(--cds-chart-muted)' })[LSTAT[st] || 'zero'];
+function markCell(c, source, field, w) { c.setAttribute('data-source', source); c.setAttribute('data-field', field); c.setAttribute('data-where', where(w)); return c; }
+
+function drawLamps(p, le, lo, mapping) {
+  const month = p.month;
+  const boxes = ['ch-odnos', 'ch-mesto'].map((i) => document.getElementById(i));
+  const kp = ['lk-n', 'lk-est', 'lk-ratio', 'lk-ok', 'lk-out'].map((i) => document.getElementById(i));
+  if (le.status !== 'ok') {
+    if (le.status === 'error') { boxes.forEach(fail); kp.forEach((el) => setText(el, '—')); } else boxes.forEach(pending);
+  } else {
+    const rows = le.data;
+    const groups = [...new Set(rows.filter((r) => r.level === 'group').map((r) => r.group))];
+    if (lGroup.options.length !== groups.length + 1) lGroup.replaceChildren(new Option('Сите', 'all'), ...groups.map((g) => new Option(g, g)));
+    lGroup.value = st.lGroup;
+    const gKey = 'Σ ' + (st.lGroup === 'all' ? 'Вкупно' : st.lGroup);
+    const sum = rows.find((r) => r.settlement === gKey && r.month === month);
+    const outRow = rows.find((r) => r.level === 'outside' && r.month === month);
+    const per = month === 'all' ? 'просек, 12 месеци' : longM(month).toLowerCase();
+    if (sum) {
+      const w = where({ settlement: gKey, month });
+      kp.slice(0, 4).forEach((el) => el.setAttribute('data-where', w));
+      setText(kp[0], f0.format(sum.lamps));
+      document.getElementById('lk-n-u').textContent = 'LED светилки, ' + f0.format(sum.inv_kw) + ' kW вкупно';
+      setText(kp[1], f0.format(sum.est_lamps));
+      document.getElementById('lk-est-u').textContent = 'светилки цела ноќ, ' + per;
+      setText(kp[2], pct(sum.ratio, 0));
+      setText(kp[3], f0.format(sum.cnt_ok) + ' од ' + f0.format(sum.cnt_ok + sum.cnt_more + sum.cnt_less));
+      document.getElementById('lk-ok-u').textContent = 'повеќе: ' + f0.format(sum.cnt_more) + ', помалку: ' + f0.format(sum.cnt_less) + ', без мерно место или потрошувачка: ' + f0.format(sum.cnt_none);
+    }
+    if (outRow) { kp[4].setAttribute('data-where', where({ settlement: outRow.settlement, month })); setText(kp[4], big(outRow.kwh)); }
+
+    const list = rows.filter((r) => r.level === 'settlement' && r.month === month && (st.lGroup === 'all' || r.group === st.lGroup)).sort((a, b) => b.lamps - a.lamps);
+    document.getElementById('h-odnos').textContent = 'Однос по населено место – ' + (month === 'all' ? '12 месеци' : longM(month));
+    legend(document.getElementById('lg-odnos'), [[color(1), 'Под 75 %'], [color(0), '75–125 %'], ['var(--cds-chart-status-critical)', 'Над 125 %'], ['var(--cds-chart-muted)', 'Без мерно место или потрошувачка']]);
+    hBars(boxes[0], list.map((r) => ({
+      key: r.settlement, label: r.settlement + ' (' + f0.format(r.lamps) + ')', value: r.meters && r.kwh ? r.ratio : 0, fill: lampFill(r.status), active: r.settlement === st.lSel ? 'sel' : true,
+      lines: [[null, 'Поставени', f0.format(r.lamps)], [null, 'Проценети', r.meters ? f0.format(r.est_lamps) : '—'], [null, 'Однос', r.meters ? pct(r.ratio, 0) : '—'], [null, 'kWh', f0.format(r.kwh)], [null, 'Мерни места', f0.format(r.meters)], [null, 'Статус', r.status]],
+    })), { fmt: (v) => v ? pct(v, 0) : '—', ref: 1, onClick: (d) => { st.lSel = d.key; draw(); } });
+
+    const sel = rows.find((r) => r.settlement === st.lSel && r.month === 'all') ? st.lSel : 'Кичево (град)';
+    const yr = rows.find((r) => r.settlement === sel && r.month === 'all');
+    document.getElementById('h-mesto').textContent = sel + ' по месеци';
+    document.getElementById('mesto-note').textContent = (yr.group ? 'Поранешна општина ' + yr.group + '. ' : '') + 'Проценети светилки по месец наспроти ' + f0.format(yr.lamps) + ' поставени. Статус за 12 месеци: ' + yr.status.toLowerCase() + '.';
+    const fw = where({ settlement: sel, month: 'all' });
+    for (const [id, text] of [['mf-n', f0.format(yr.lamps)], ['mf-w', f1.format(yr.watt_avg) + ' W'], ['mf-m', f0.format(yr.meters)], ['mf-k', f0.format(yr.kwh)], ['mf-h', f0.format(yr.implied_hours) + ' ч'], ['mf-nh', f0.format(yr.night_hours) + ' ч']]) {
+      const el = document.getElementById(id); el.setAttribute('data-where', fw); el.textContent = text;
+    }
+    legend(document.getElementById('lg-mesto'), [[color(0), 'Проценети светилки'], ['var(--cds-chart-reference)', 'Поставени (список)']]);
+    monthLines(boxes[1], [{ name: 'Проценети', color: color(0), points: MONTHS.map((k) => ({ k, v: rows.find((r) => r.settlement === sel && r.month === k)?.est_lamps ?? null })) }],
+      { height: 180, zero: true, fmt: (v) => v == null ? '—' : f0.format(v) + ' светилки', axis: axisFmt, ref: yr.lamps, refLabel: f0.format(yr.lamps) + ' поставени', active: month, onClick: (k) => dash.setParams({ month: p.month === k ? 'all' : k }) });
+
+    const t = document.getElementById('t-lamps');
+    const hr = document.createElement('tr');
+    hr.append(thSpan('Населено место', 'kc-sticky'), thSpan('Поставени', 'kc-num'), thSpan('W', 'kc-num kc-hide-sm'), ...MONTHS.map((k) => thSpan(shortM(k), 'kc-num')), thSpan('12 мес.', 'kc-num'), thSpan('Однос', 'kc-num'), thSpan('Статус'));
+    t.tHead.replaceChildren(hr);
+    const all = rows.filter((r) => (r.level === 'settlement' || r.level === 'group' || (r.level === 'total' && st.lGroup === 'all')) && (st.lGroup === 'all' || r.level === 'total' || r.group === st.lGroup));
+    const by = new Map(all.map((r) => [r.settlement + '|' + r.month, r]));
+    const names = [...new Set(all.filter((r) => r.month === 'all').sort((a, b) => (a.level === 'settlement') - (b.level === 'settlement') || b.lamps - a.lamps).map((r) => r.settlement))];
+    const order = names.filter((n) => by.get(n + '|all').level !== 'settlement').concat(names.filter((n) => by.get(n + '|all').level === 'settlement'));
+    t.tBodies[0].replaceChildren(...order.map((n) => {
+      const y = by.get(n + '|all');
+      const tr = document.createElement('tr');
+      tr.dataset.s = n;
+      tr.className = 'kc-click' + (y.level !== 'settlement' ? ' kc-total' : '');
+      if (n === sel) tr.setAttribute('aria-selected', 'true');
+      const name = td(y.level === 'total' ? 'Σ Сите места' : n, 'kc-sticky');
+      tr.append(name, markCell(td(f0.format(y.lamps), 'kc-num'), 'lamp_est', 'lamps', { settlement: n, month: 'all' }), markCell(td(f1.format(y.watt_avg), 'kc-num kc-hide-sm'), 'lamp_est', 'watt_avg', { settlement: n, month: 'all' }));
+      for (const k of MONTHS) {
+        const r = by.get(n + '|' + k);
+        const c = td(r && (r.meters || r.level !== 'settlement') ? f0.format(r.est_lamps) : '—', 'kc-num ' + (r ? lampClass(r.ratio, r.kwh) : ''));
+        if (r) { markCell(c, 'lamp_est', 'est_lamps', { settlement: n, month: k }); c.title = pct(r.ratio, 0) + ' од поставените · ' + f0.format(r.kwh) + ' kWh'; }
+        tr.append(c);
+      }
+      tr.append(markCell(td(y.meters || y.level !== 'settlement' ? f0.format(y.est_lamps) : '—', 'kc-num ' + lampClass(y.ratio, y.kwh)), 'lamp_est', 'est_lamps', { settlement: n, month: 'all' }),
+        markCell(td(y.meters || y.level !== 'settlement' ? pct(y.ratio, 0) : '—', 'kc-num'), 'lamp_est', 'ratio', { settlement: n, month: 'all' }));
+      const stc = td(y.status, 'kc-status kc-s-' + (LSTAT[y.status] || 'zero'));
+      if (y.status) markCell(stc, 'lamp_est', 'status', { settlement: n, month: 'all' });
+      tr.append(stc);
+      return tr;
+    }));
+  }
+
+  const ob = document.getElementById('t-outside').tBodies[0];
+  if (lo.status === 'ok') ob.replaceChildren(...lo.data.map((r) => { const tr = document.createElement('tr'); tr.dataset.key = r.meter; const a = td(r.address, 'kc-addr'); a.title = r.address; tr.append(td(r.meter), a, td(f0.format(r.kwh), 'kc-num')); return tr; }));
+  else ob.replaceChildren();
+  const mb = document.getElementById('t-map').tBodies[0];
+  if (mapping.status === 'ok') mb.replaceChildren(...mapping.data.map((r) => { const tr = document.createElement('tr'); tr.dataset.key = String(r.meter); const a = td(r.address, 'kc-addr'); a.title = r.address; tr.append(td(String(r.meter)), a, td(r.settlement || '—'), td(r.certainty)); return tr; }));
+  else mb.replaceChildren();
 }
 
 /* ---------- мерни места ---------- */
