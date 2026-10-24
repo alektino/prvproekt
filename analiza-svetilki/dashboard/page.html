@@ -1,0 +1,725 @@
+<style>
+.kc { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); font-variant-numeric: tabular-nums; min-width: 0; }
+.kc-head { display: grid; gap: var(--cds-gap-xs); min-width: 0; }
+.kc-page { display: grid; gap: var(--cds-gap-md); min-width: 0; }
+.kc > section[hidden] { display: none; }
+.kc-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+.kc-lede { color: var(--color-fg-muted); margin: 0; max-width: 75ch; }
+.kc-lede b, .kc-note b { font-weight: var(--cds-font-weight-medium); color: var(--color-fg); }
+.kc-bar { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: end; justify-content: space-between; }
+.kc-tabs { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); }
+.kc-tab { font: inherit; padding: var(--cds-pad-xs) var(--cds-pad-md); border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); background: transparent; color: var(--color-fg-muted); cursor: pointer; }
+.kc-tab[aria-selected="true"] { background: var(--color-panel); color: var(--color-fg); border-color: var(--color-fg-muted); }
+.kc-tab:focus-visible, .kc-btn:focus-visible, .kc select:focus-visible, .kc input:focus-visible, .kc th button:focus-visible, .kc-seg button:focus-visible, .kc-chipbtn:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.kc-filters { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: end; }
+.kc-field { display: grid; gap: 2px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-width: 0; }
+.kc select, .kc input[type="search"] { font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); min-width: 0; max-width: 100%; }
+.kc-btn { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); background: transparent; color: var(--color-fg); cursor: pointer; }
+.kc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); gap: var(--cds-gap-md); }
+.kc-kpi { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); display: grid; gap: var(--cds-gap-xs); align-content: start; }
+.kc-kpi-l { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.kc-kpi-v { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.15; }
+.kc-kpi-u { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.kc-kpi-d { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-height: 1.3em; }
+.kc-up { color: var(--color-bad); }
+.kc-down { color: var(--color-ok); }
+.kc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
+.kc-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); align-content: start; min-width: 0; }
+.kc-wide { grid-column: 1 / -1; }
+.kc-card h3 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+.kc-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0; max-width: 85ch; }
+.kc-card-top { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); justify-content: space-between; align-items: start; }
+.kc-controls { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: end; }
+.kc-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); overflow: hidden; }
+.kc-seg button { font: inherit; font-size: var(--cds-font-size-caption); border: 0; background: transparent; color: var(--color-fg-muted); padding: var(--cds-pad-xs) var(--cds-pad-sm); cursor: pointer; }
+.kc-seg button[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); }
+.kc-chart { position: relative; min-height: 240px; }
+.kc-chart.kc-short { min-height: 180px; }
+.kc-chart.kc-tall { min-height: 300px; }
+.kc-svg { display: block; overflow: visible; }
+.kc-svg text { fill: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-family: var(--font-anthropic-sans); }
+.kc-svg .kc-strong { fill: var(--color-fg); }
+.kc-svg .kc-big { fill: var(--color-fg); font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-title); }
+.kc-svg .kc-gridl { stroke: var(--cds-chart-grid); stroke-width: 1; }
+.kc-svg .kc-axis { stroke: var(--cds-chart-axis); stroke-width: 1; }
+.kc-svg .kc-ref { stroke: var(--cds-chart-reference); stroke-width: 1; stroke-dasharray: 4 3; }
+.kc-svg .kc-hit { fill: transparent; cursor: pointer; }
+.kc-svg .kc-val { fill: var(--color-fg); }
+.kc-tip { position: absolute; z-index: 2; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); display: grid; gap: 2px; min-width: 10rem; max-width: 20rem; }
+.kc-tip-h { color: var(--cds-text-secondary); }
+.kc-tip-r { display: flex; align-items: center; gap: var(--cds-gap-xs); }
+.kc-tip-r b { margin-left: auto; padding-left: var(--cds-gap-sm); font-weight: var(--cds-font-weight-medium); white-space: nowrap; }
+.kc-sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.kc-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.kc-legend span { display: inline-flex; align-items: center; gap: var(--cds-gap-xs); }
+.kc-split { display: grid; gap: var(--cds-gap-sm); }
+.kc-split-row { display: grid; grid-template-columns: minmax(0, 8rem) 1fr minmax(0, auto); gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-caption); cursor: pointer; }
+.kc-split-track { height: 12px; background: var(--color-bg); border-radius: 6px; overflow: hidden; }
+.kc-split-fill { height: 100%; border-radius: 6px; }
+.kc-tablebox { max-height: 34rem; overflow: auto; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.kc-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); }
+.kc-table th { position: sticky; top: 0; background: var(--color-panel); text-align: left; font-weight: var(--cds-font-weight-medium); border-bottom: 1px solid var(--color-border-line); padding: 0; z-index: 1; white-space: nowrap; }
+.kc-table th.kc-num { text-align: right; }
+.kc-table th button { font: inherit; color: var(--color-fg-muted); background: transparent; border: 0; padding: var(--cds-pad-xs) var(--cds-pad-sm); cursor: pointer; width: 100%; text-align: inherit; }
+.kc-table th span.kc-th { display: block; color: var(--color-fg-muted); padding: var(--cds-pad-xs) var(--cds-pad-sm); }
+.kc-table th[aria-sort] button { color: var(--color-fg); }
+.kc-table td { padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: middle; }
+.kc-table .kc-num { text-align: right; white-space: nowrap; }
+.kc-table tbody tr.kc-click { cursor: pointer; }
+.kc-table tbody tr.kc-click:hover td { background: var(--color-bg); }
+.kc-table tbody tr[aria-selected="true"] td { background: var(--color-bg); font-weight: var(--cds-font-weight-medium); }
+.kc-table tbody tr.kc-total td { font-weight: var(--cds-font-weight-medium); }
+.kc-addr { max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kc-spark { display: inline-block; vertical-align: middle; margin-left: var(--cds-gap-xs); }
+.kc-chip { display: inline-block; padding: 0 6px; border-radius: 999px; border: 1px solid var(--color-border-line); color: var(--color-warn); white-space: nowrap; margin: 1px 2px 1px 0; }
+.kc-chip.kc-bad { color: var(--color-bad); }
+.kc-chipbtn { font: inherit; font-size: var(--cds-font-size-caption); display: inline-flex; align-items: center; gap: var(--cds-gap-xs); padding: 2px var(--cds-pad-sm); border-radius: 999px; border: 1px solid var(--color-border-line); background: var(--color-bg); color: var(--color-fg); cursor: pointer; max-width: 100%; }
+.kc-chips { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); align-items: center; }
+.kc-sep { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.kc-count { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.kc-sim { display: grid; gap: var(--cds-gap-md); }
+.kc-sim input[type="range"] { width: 100%; accent-color: var(--color-fg); }
+.kc-sim-out { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--cds-gap-md); }
+.kc-defs { display: grid; gap: var(--cds-gap-xs); margin: 0; padding-left: 1.1rem; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); max-width: 85ch; }
+.kc-clockwrap { display: grid; grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); gap: var(--cds-gap-lg); align-items: center; }
+@media (max-width: 720px) { .kc-clockwrap { grid-template-columns: 1fr; } }
+.kc-clock { position: relative; min-height: 280px; max-width: 22rem; width: 100%; margin-inline: auto; }
+.kc-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: var(--cds-gap-sm) var(--cds-gap-md); margin: 0; }
+.kc-facts div { display: grid; gap: 2px; }
+.kc-facts dt { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.kc-facts dd { margin: 0; font-size: var(--cds-font-size-heading); }
+.kc-fail { display: flex; align-items: center; justify-content: center; gap: var(--cds-gap-xs); min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.kc-fail::before { content: ""; width: 0.375rem; height: 0.375rem; border-radius: 50%; background: var(--color-bad); }
+.kc [data-dash-source-state=empty] { color: transparent; }
+.kc [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+.kc-table td.kc-r-less { background: color-mix(in srgb, var(--color-warn) 16%, transparent); }
+.kc-table td.kc-r-ok { background: color-mix(in srgb, var(--color-ok) 16%, transparent); }
+.kc-table td.kc-r-more { background: color-mix(in srgb, var(--color-bad) 14%, transparent); }
+.kc-table td.kc-r-much { background: color-mix(in srgb, var(--color-bad) 30%, transparent); }
+.kc-table td.kc-r-zero { color: var(--color-fg-muted); }
+.kc-table td.kc-sticky, .kc-table th.kc-sticky { position: sticky; left: 0; background: var(--color-panel); z-index: 1; }
+.kc-table th.kc-sticky { z-index: 2; }
+.kc-status { white-space: nowrap; }
+.kc-status.kc-s-less { color: var(--color-warn); }
+.kc-status.kc-s-ok { color: var(--color-ok); }
+.kc-status.kc-s-more, .kc-status.kc-s-much { color: var(--color-bad); }
+.kc-status.kc-s-nolist, .kc-status.kc-s-zero { color: var(--color-fg-muted); }
+.kc details summary { cursor: pointer; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+@media (max-width: 640px) { .kc-hide-sm { display: none; } }
+</style>
+
+<div class="kc">
+  <header class="kc-head">
+    <h2 class="kc-title" id="naslov">Број на светилки – работна анализа</h2>
+    <p class="kc-lede" id="lede"><span class="dash-skeleton" data-source="opstini" data-field="stari_postaveni" data-where="opstina=%D0%92%D0%BA%D1%83%D0%BF%D0%BD%D0%BE&amp;mesec=all" id="lede-old">—</span></p>
+  </header>
+
+  <div class="kc-bar">
+    <div class="kc-tabs" role="tablist" aria-label="Страници">
+      <button class="kc-tab" role="tab" id="tab-analiza" aria-controls="analiza" aria-selected="true">Анализа по месец</button>
+      <button class="kc-tab" role="tab" id="tab-mesta" aria-controls="mesta" aria-selected="false">По населено место</button>
+      <button class="kc-tab" role="tab" id="tab-sporedba" aria-controls="sporedba" aria-selected="false">Споредба со проценките</button>
+      <button class="kc-tab" role="tab" id="tab-mapa" aria-controls="mapa" aria-selected="false">Мерни места</button>
+    </div>
+    <div class="kc-filters">
+      <label class="kc-field">Поранешна општина
+        <select id="f-op">
+          <option value="Вкупно">Сите</option>
+          <option value="Кичево">Кичево</option>
+          <option value="Другово">Другово</option>
+          <option value="Осломеј">Осломеј</option>
+          <option value="Вранештица">Вранештица</option>
+          <option value="Зајас">Зајас</option>
+        </select>
+      </label>
+      <label class="kc-field">Месец
+        <select id="f-m"></select>
+      </label>
+    </div>
+  </div>
+
+  <!-- АНАЛИЗА -->
+  <section id="analiza" role="tabpanel" aria-labelledby="tab-analiza" class="kc-page">
+    <div class="kc-card" id="karta-pretpostavki">
+      <div class="kc-head"><h3>Претпоставки</h3><p class="kc-note">Работна верзија со импровизирани претпоставки. Се менуваат во табелата со претпоставки и анализата се пресметува повторно.</p></div>
+      <ul class="kc-defs" id="pretp-list" data-source="pretpostavki"></ul>
+      <ul class="kc-defs">
+        <li><b>Пресметка за секое населено место и месец:</b> енергијата на LED светилките = нивната вкупна моќност × ноќните часови (зајдисонце–изгрејсонце за Кичево). Остатокот од фактурираните kWh го трошат старите светилки: активни стари = остаток ÷ (ноќни часови × моќност на стара светилка); поставени стари = активни ÷ удел на активни.</li>
+        <li>Ако едно место троши помалку отколку што би трошеле неговите LED светилки, остатокот е негативен: тогаш дел од LED светилките не светат („LED што не светат“), а старите се 0.</li>
+        <li>Вашите проценки по поранешна општина не влегуваат во пресметката. Тие се споредуваат само на крајот, во „Споредба со проценките“.</li>
+      </ul>
+    </div>
+
+    <div class="kc-kpis">
+      <div class="kc-kpi"><span class="kc-kpi-l">LED светилки (ЈПП)</span><span class="kc-kpi-v dash-skeleton" id="k-led" data-source="opstini" data-field="led">—</span><span class="kc-kpi-u">според списокот</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Пресметани стари светилки</span><span class="kc-kpi-v dash-skeleton" id="k-old" data-source="opstini" data-field="stari_postaveni">—</span><span class="kc-kpi-u" id="k-old-u">поставени</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Од нив активни</span><span class="kc-kpi-v dash-skeleton" id="k-act" data-source="opstini" data-field="stari_aktivni">—</span><span class="kc-kpi-u">светат</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Удел стари во вкупниот број</span><span class="kc-kpi-v dash-skeleton" id="k-share" data-source="opstini" data-field="udel_stari">—</span><span class="kc-kpi-u">стари ÷ (стари + LED)</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">LED што не светат</span><span class="kc-kpi-v dash-skeleton" id="k-def" data-source="opstini" data-field="led_ne_svetat">—</span><span class="kc-kpi-u">во места со помала потрошувачка од LED</span></div>
+      <div class="kc-kpi"><span class="kc-kpi-l">Енергија за стари светилки</span><span class="kc-kpi-v dash-skeleton" id="k-rest" data-source="opstini" data-field="ostatok_kwh">—</span><span class="kc-kpi-u" id="k-rest-u">kWh, остаток над LED</span></div>
+    </div>
+
+    <div class="kc-grid">
+      <div class="kc-card kc-wide" id="karta-stari-mesec">
+        <div class="kc-head"><h3 id="h-stari">Пресметани стари светилки по месец</h3><p class="kc-note">Ако моделот е точен, бројот на стари светилки треба да е приближно ист секој месец. Големите разлики меѓу месеците покажуваат дека дел од потрошувачката не е од стари светилки (на пр. новогодишно украсување во декември–јануари, фотоќелии што се вклучуваат порано во облачни зимски денови). Кликнете на месец за да го изберете.</p></div>
+        <div class="kc-legend" id="lg-stari"></div>
+        <div class="kc-chart dash-skeleton" id="ch-stari" data-source="opstini"></div>
+      </div>
+
+      <div class="kc-card" id="karta-energija">
+        <div class="kc-head"><h3 id="h-en">Каде оди енергијата</h3><p class="kc-note">Фактурирани kWh по месец, поделени на делот што го трошат LED светилките и остатокот.</p></div>
+        <div class="kc-legend" id="lg-en"></div>
+        <div class="kc-chart kc-short dash-skeleton" id="ch-en" data-source="opstini"></div>
+      </div>
+
+      <div class="kc-card" id="karta-op">
+        <div class="kc-head"><h3 id="h-op">По поранешна општина</h3><p class="kc-note">LED од ЈПП и пресметани стари светилки за избраниот месец.</p></div>
+        <div class="kc-legend" id="lg-op"></div>
+        <div class="kc-chart dash-skeleton" id="ch-op" data-source="opstini"></div>
+      </div>
+
+      <div class="kc-card kc-wide" id="karta-pivot-op">
+        <div class="kc-head"><h3>Стари светилки по поранешна општина и месец</h3><p class="kc-note">Пресметан број поставени стари светилки.</p></div>
+        <div class="kc-tablebox" style="max-height: none">
+          <table class="kc-table" id="t-op"><thead></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ПО МЕСТО -->
+  <section id="mesta" role="tabpanel" aria-labelledby="tab-mesta" class="kc-page" hidden>
+    <div class="kc-card" id="karta-mesta">
+      <div class="kc-head"><h3 id="h-mesta">Населени места по месец</h3><p class="kc-note">Пресметан број поставени стари светилки по месец. Жолто = LED што не светат (потрошувачката е помала од LED). Кликнете на место за детали.</p></div>
+      <div class="kc-tablebox">
+        <table class="kc-table" id="t-mesta"><thead></thead><tbody></tbody></table>
+      </div>
+    </div>
+    <div class="kc-card" id="karta-detal">
+      <div class="kc-head"><h3 id="d-title">Населено место</h3><p class="kc-note" id="d-sub">Изберете место од табелата.</p></div>
+      <div class="kc-legend" id="lg-d"></div>
+      <div class="kc-chart kc-short" id="ch-d" data-source="mesta"></div>
+    </div>
+  </section>
+
+  <!-- СПОРЕДБА -->
+  <section id="sporedba" role="tabpanel" aria-labelledby="tab-sporedba" class="kc-page" hidden>
+    <div class="kc-card" id="karta-sporedba">
+      <div class="kc-head"><h3>Пресметано наспроти вашите проценки</h3><p class="kc-lede" id="sp-lede"></p></div>
+      <div class="kc-legend" id="lg-sp"></div>
+      <div class="kc-chart dash-skeleton" id="ch-sp" data-source="sporedba"></div>
+      <div class="kc-tablebox" style="max-height: none">
+        <table class="kc-table" id="t-sp" data-source="sporedba" data-row-key="opstina">
+          <thead><tr>
+            <th data-field="opstina"><span class="kc-th">Поранешна општина</span></th>
+            <th data-field="led" class="kc-num"><span class="kc-th">LED</span></th>
+            <th data-field="presmetani_stari" class="kc-num"><span class="kc-th">Пресметани стари</span></th>
+            <th data-field="presmetan_udel" class="kc-num"><span class="kc-th">Пресметан удел</span></th>
+            <th data-field="procenka_zapis"><span class="kc-th">Ваша проценка</span></th>
+            <th data-field="procenka_stari" class="kc-num"><span class="kc-th">Стари според проценката</span></th>
+            <th data-field="neobjasneti_kwh" class="kc-num kc-hide-sm"><span class="kc-th">Необјаснети kWh</span></th>
+            <th data-field="potrebna_moknost_w" class="kc-num"><span class="kc-th">Потребна моќност по стара светилка</span></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="kc-card" id="karta-zaklucoci">
+      <div class="kc-head"><h3>Што значи ова</h3></div>
+      <ul class="kc-defs" id="sp-list">
+        <li><b>Потребна моќност по стара светилка</b>: колку W би требало да троши секоја стара светилка (при 80 % активни) за бројот на стари светилки од вашата проценка да ја објасни целата потрошувачка. Ако е околу 9 W, проценката и потрошувачката се совпаѓаат.</li>
+        <li>Каде што потребната моќност е многу над 9 W, има повеќе енергија отколку што можат да потрошат LED светилките и вашиот број стари светилки. Можни причини: повеќе стари светилки, стари светилки со посилни сијалици, LED што трошат повеќе од номиналната моќност, светење дење или други потрошувачи на ормарите.</li>
+        <li>Оваа споредба ќе има повеќе смисла кога ќе ги поправиме поврзувањата мерно место → населено место и бројот на светилки по село.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- МЕРНИ МЕСТА -->
+  <section id="mapa" role="tabpanel" aria-labelledby="tab-mapa" class="kc-page" hidden>
+    <div class="kc-card" id="karta-mapa">
+      <div class="kc-head"><h3>Препознаени мерни места</h3><p class="kc-note">Мерните места за улично осветлување и населените места со кои се поврзани. Грешките обележете ги во табелата „Проверка на мерни места“ (Excel) и испратете ја назад.</p></div>
+      <label class="kc-field">Пребарај<input type="search" id="m-q" placeholder="адреса, мерно место, населено место…" autocomplete="off"></label>
+      <span class="kc-count" id="m-count"></span>
+      <div class="kc-tablebox">
+        <table class="kc-table" id="t-mapa" data-source="mapiranje" data-row-key="meter">
+          <thead><tr>
+            <th data-field="group"><span class="kc-th">Поранешна општина</span></th>
+            <th data-field="settlement"><span class="kc-th">Населено место</span></th>
+            <th data-field="meter"><span class="kc-th">Мерно место</span></th>
+            <th data-field="address"><span class="kc-th">Адреса</span></th>
+            <th data-field="certainty"><span class="kc-th">Сигурност</span></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- помошни ---------- */
+const MONTHS = ['2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
+const MNAME = { '01': 'Јануари', '02': 'Февруари', '03': 'Март', '04': 'Април', '05': 'Мај', '06': 'Јуни', '07': 'Јули', '08': 'Август', '09': 'Септември', '10': 'Октомври', '11': 'Ноември', '12': 'Декември' };
+const MSHORT = { '01': 'Јан', '02': 'Фев', '03': 'Мар', '04': 'Апр', '05': 'Мај', '06': 'Јун', '07': 'Јул', '08': 'Авг', '09': 'Сеп', '10': 'Окт', '11': 'Ное', '12': 'Дек' };
+const longM = (k) => MNAME[k.slice(5)] + ' ' + k.slice(0, 4);
+const shortM = (k) => MSHORT[k.slice(5)] + ' ' + k.slice(2, 4);
+const nf = (d) => new Intl.NumberFormat('mk-MK', { minimumFractionDigits: d, maximumFractionDigits: d });
+const f0 = nf(0), f1 = nf(1), f2 = nf(2);
+const big = (v) => v == null ? '—' : Math.abs(v) >= 1e6 ? f2.format(v / 1e6) + ' мил.' : f0.format(v);
+const pct = (v, d = 1) => v == null ? '—' : nf(d).format(v * 100) + ' %';
+const sgn = (v) => v == null ? '' : (v > 0 ? '+' : v < 0 ? '−' : '±') + nf(1).format(Math.abs(v * 100)) + ' %';
+const num = (v) => v == null ? '—' : Math.abs(v) < 100 ? f1.format(v) : f0.format(v);
+const sgnNum = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±') + num(Math.abs(v));
+const axisFmt = (v) => Math.abs(v) >= 1e6 ? f1.format(v / 1e6) + ' мил.' : Math.abs(v) >= 1e4 ? f0.format(v / 1e3) + ' илј.' : Math.abs(v) >= 100 ? f0.format(v) : f1.format(v).replace(/,0$/, '');
+const hm = (h) => { let m = Math.round((((h % 24) + 24) % 24) * 60); if (m === 1440) m = 0; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+const dur = (h) => { const m = Math.round(h * 60); return Math.floor(m / 60) + ' ч ' + String(m % 60).padStart(2, '0') + ' мин'; };
+const CAT = { all: 'Сите категории', ulicno: 'Улично (LV1.1)', objekti: 'Објекти (LV2)' };
+const enc = (s) => encodeURIComponent(s);
+const where = (o) => Object.entries(o).map(([k, v]) => enc(k) + '=' + enc(v)).join('&');
+const color = (i) => dash.colors[i % dash.colors.length];
+const MEAS = {
+  kwh: { field: 'kwh', day: 'kwh_day', meter: 'kwh_meter', unit: 'kWh', name: 'Потрошувачка', fmt: (v) => f0.format(v) + ' kWh', title: 'Месечна потрошувачка (kWh)' },
+  billed: { field: 'billed', day: 'billed_day', meter: 'billed_meter', unit: 'ден.', name: 'Фактурирано', fmt: (v) => f0.format(v) + ' ден.', title: 'Месечна сметка (фактурирано, ден.)' },
+};
+
+const P = () => { const p = dash.params(); return { month: p.month || 'all', cat: p.cat || 'all', area: p.area || 'all', measure: p.measure === 'billed' ? 'billed' : 'kwh' }; };
+const setText = (el, t) => { el.textContent = t; el.classList.remove('dash-skeleton'); };
+const fail = (el) => { el.classList.remove('dash-skeleton'); el.querySelector(':scope > .kc-plot')?.remove(); if (!el.querySelector(':scope > .kc-fail')) { const d = document.createElement('div'); d.className = 'kc-fail'; d.textContent = 'Failed to load'; el.append(d); } };
+const pending = (el) => { el.classList.add('dash-skeleton'); };
+const clearChart = (el) => { el.querySelector(':scope > .kc-plot')?.replaceChildren(); el.classList.remove('dash-skeleton'); };
+const statusOf = (...ds) => ds.some((d) => d.status === 'error') ? 'error' : ds.every((d) => d.status === 'ok') ? 'ok' : 'loading';
+
+function tipFor(box) {
+  let t = box.querySelector(':scope > .kc-tip');
+  if (!t) { t = document.createElement('div'); t.className = 'kc-tip'; t.hidden = true; box.append(t); }
+  return {
+    show(ev, head, lines) {
+      t.replaceChildren();
+      const h = document.createElement('div'); h.className = 'kc-tip-h'; h.textContent = head; t.append(h);
+      for (const [c, name, val] of lines) {
+        const row = document.createElement('div'); row.className = 'kc-tip-r';
+        if (c) { const s = document.createElement('span'); s.className = 'kc-sw'; s.style.background = c; row.append(s); }
+        const n = document.createElement('span'); n.textContent = name;
+        const v = document.createElement('b'); v.textContent = val;
+        row.append(n, v); t.append(row);
+      }
+      t.hidden = false;
+      const r = box.getBoundingClientRect();
+      let x = ev.clientX - r.left + 14, y = ev.clientY - r.top + 14;
+      if (x + t.offsetWidth > r.width) x = ev.clientX - r.left - t.offsetWidth - 14;
+      if (x < 0) x = 0;
+      if (y + t.offsetHeight > r.height) y = Math.max(0, ev.clientY - r.top - t.offsetHeight - 14);
+      t.style.left = x + 'px'; t.style.top = y + 'px';
+    },
+    hide() { t.hidden = true; },
+  };
+}
+
+function svgIn(box, H, Wfix) {
+  box.querySelector(':scope > .kc-fail')?.remove();
+  let plot = box.querySelector(':scope > .kc-plot');
+  if (!plot) { plot = document.createElement('div'); plot.className = 'kc-plot'; box.prepend(plot); }
+  plot.replaceChildren();
+  box.classList.remove('dash-skeleton');
+  const W = Wfix || Math.max(280, Math.floor(box.clientWidth || 600));
+  const svg = d3.select(plot).append('svg').attr('class', 'kc-svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img');
+  return { svg, W, H };
+}
+function measure(svg, labels) {
+  const t = svg.append('text');
+  let w = 0;
+  for (const l of labels) { t.text(l); w = Math.max(w, t.node().getComputedTextLength()); }
+  t.remove();
+  return w;
+}
+function yAxis(svg, y, ticks, fmt, x0, x1) {
+  const g = svg.append('g');
+  for (const v of ticks) {
+    g.append('line').attr('class', 'kc-gridl').attr('x1', x0).attr('x2', x1).attr('y1', y(v)).attr('y2', y(v));
+    g.append('text').attr('x', x0 - 6).attr('y', y(v)).attr('dy', '0.32em').attr('text-anchor', 'end').text(fmt(v));
+  }
+}
+function xLabels(svg, x, keys, label, yPos) {
+  const lw = measure(svg, keys.map(label)) + 8;
+  const step = Math.max(1, Math.ceil(lw / x.step()));
+  keys.forEach((k, i) => { if (i % step === 0) svg.append('text').attr('x', x(k) + x.bandwidth() / 2).attr('y', yPos).attr('text-anchor', 'middle').text(label(k)); });
+}
+
+/* Вертикални столбови по месец: наслагани или групирани */
+function monthBars(box, data, o) {
+  const H = o.height;
+  const { svg, W } = svgIn(box, H);
+  const tip = tipFor(box);
+  const max = (o.grouped ? d3.max(data, (d) => d3.max(d.parts, (p) => p.v)) : d3.max(data, (d) => d3.sum(d.parts, (p) => Math.max(0, p.v)))) || 1;
+  const y = d3.scaleLinear([0, max], [H - 22, 10]).nice();
+  const ticks = y.ticks(4);
+  const ml = measure(svg, ticks.map(axisFmt)) + 10;
+  const x = d3.scaleBand(data.map((d) => d.key), [ml, W - 4]).padding(0.25);
+  yAxis(svg, y, ticks, axisFmt, ml, W - 4);
+  svg.append('line').attr('class', 'kc-axis').attr('x1', ml).attr('x2', W - 4).attr('y1', y(0)).attr('y2', y(0));
+  for (const d of data) {
+    if (o.grouped) {
+      const n = d.parts.length, gw = Math.min(x.bandwidth(), 24 * n + 3 * (n - 1)), bw = (gw - 3 * (n - 1)) / n;
+      d.parts.forEach((p, i) => {
+        const v = Math.max(0, p.v), bx = x(d.key) + (x.bandwidth() - gw) / 2 + i * (bw + 3);
+        svg.append('rect').attr('x', bx).attr('y', y(v)).attr('width', bw).attr('height', Math.max(0, y(0) - y(v))).attr('rx', 3).attr('fill', p.color).attr('opacity', d.dim ? 0.35 : 1);
+      });
+    } else {
+      const bw = Math.min(32, x.bandwidth());
+      let acc = 0;
+      const cx = x(d.key) + (x.bandwidth() - bw) / 2;
+      d.parts.forEach((p, i) => {
+        const v = Math.max(0, p.v), top = y(acc + v), h = y(acc) - top;
+        svg.append('rect').attr('x', cx).attr('y', top).attr('width', bw).attr('height', Math.max(0, h)).attr('rx', i === d.parts.length - 1 ? 4 : 1).attr('fill', p.color).attr('opacity', d.dim ? 0.35 : 1);
+        acc += v;
+      });
+    }
+  }
+  xLabels(svg, x, data.map((d) => d.key), shortM, H - 4);
+  for (const d of data) {
+    svg.append('rect').attr('class', 'kc-hit').attr('x', x(d.key) - x.step() * x.paddingInner() / 2).attr('y', 0).attr('width', x.step()).attr('height', H - 20)
+      .on('mousemove', (ev) => tip.show(ev, longM(d.key), d.parts.map((p) => [d.parts.length > 1 ? p.color : null, p.name, p.fmt(p.v)]).concat(d.extra || [])))
+      .on('mouseleave', () => tip.hide())
+      .on('click', () => o.onClick && o.onClick(d));
+  }
+}
+
+/* Линии по месец */
+function monthLines(box, series, o) {
+  const H = o.height;
+  const { svg, W } = svgIn(box, H);
+  const tip = tipFor(box);
+  const vals = series.flatMap((s) => s.points.map((p) => p.v)).filter((v) => v != null);
+  if (!vals.length) return;
+  if (o.ref != null) vals.push(o.ref);
+  const lo = o.zero ? 0 : d3.min(vals), hi = d3.max(vals);
+  const pad = o.zero ? 0 : (hi - lo) * 0.15 || 0.5;
+  const y = d3.scaleLinear([lo - pad, (hi + pad) || 1], [H - 22, 10]).nice();
+  const ticks = y.ticks(4);
+  const ml = measure(svg, ticks.map(o.axis || o.fmt)) + 10;
+  const xb = d3.scaleBand(MONTHS, [ml, W - 4]);
+  const x = (k) => xb(k) + xb.bandwidth() / 2;
+  yAxis(svg, y, ticks, o.axis || o.fmt, ml, W - 4);
+  xLabels(svg, xb, MONTHS, shortM, H - 4);
+  if (o.ref != null) {
+    svg.append('line').attr('class', 'kc-ref').attr('x1', ml).attr('x2', W - 4).attr('y1', y(o.ref)).attr('y2', y(o.ref));
+    if (o.refLabel) svg.append('text').attr('class', 'kc-strong').attr('x', W - 6).attr('y', y(o.ref) - 5).attr('text-anchor', 'end').text(o.refLabel);
+  }
+  const line = d3.line().defined((p) => p.v != null).x((p) => x(p.k)).y((p) => y(p.v));
+  series.forEach((s) => {
+    svg.append('path').attr('d', line(s.points)).attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
+    for (const p of s.points) if (p.v != null) svg.append('circle').attr('cx', x(p.k)).attr('cy', y(p.v)).attr('r', p.k === o.active ? 4.5 : 2.5).attr('fill', s.color);
+  });
+  const rule = svg.append('line').attr('class', 'kc-axis').attr('y1', 10).attr('y2', H - 22).attr('opacity', 0);
+  for (const k of MONTHS) {
+    svg.append('rect').attr('class', 'kc-hit').attr('x', xb(k)).attr('y', 0).attr('width', xb.bandwidth()).attr('height', H - 20)
+      .on('mousemove', (ev) => { rule.attr('x1', x(k)).attr('x2', x(k)).attr('opacity', 1); tip.show(ev, longM(k), series.map((s) => [series.length > 1 ? s.color : null, s.name, o.fmt(s.points.find((p) => p.k === k)?.v)])); })
+      .on('mouseleave', () => { rule.attr('opacity', 0); tip.hide(); })
+      .on('click', () => o.onClick && o.onClick(k));
+  }
+}
+
+/* Хоризонтални столбови, и со негативни вредности */
+function hBars(box, data, o) {
+  const row = 26, H = Math.max(1, data.length) * row + 8;
+  box.style.minHeight = H + 'px';
+  const { svg, W } = svgIn(box, H);
+  const tip = tipFor(box);
+  const lw = Math.min(W * 0.36, measure(svg, data.map((d) => d.label)) + 10);
+  const vw = measure(svg, data.map((d) => o.fmt(d.value))) + 10;
+  const lo = Math.min(0, d3.min(data, (d) => d.value) || 0), hi = Math.max(0, d3.max(data, (d) => d.value) || 0, o.ref || 0);
+  const x = d3.scaleLinear([lo, hi || (lo ? 0 : 1)], [lw + (lo < 0 ? vw : 0), W - (hi > 0 || !lo ? vw : 6)]);
+  if (lo < 0) svg.append('line').attr('class', 'kc-axis').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 0).attr('y2', H);
+  data.forEach((d, i) => {
+    if (d.active === 'sel') svg.append('rect').attr('x', 0).attr('y', i * row + 4).attr('width', W).attr('height', row).attr('fill', 'var(--color-bg)');
+  });
+  data.forEach((d, i) => {
+    const yy = i * row + 4;
+    const x0 = x(Math.min(0, d.value)), x1 = x(Math.max(0, d.value));
+    svg.append('text').attr('x', lw - 8).attr('y', yy + row / 2 - 2).attr('dy', '0.32em').attr('text-anchor', 'end').text(d.label);
+    svg.append('rect').attr('x', x0).attr('y', yy + 4).attr('height', row - 12).attr('width', Math.max(2, x1 - x0)).attr('rx', 4)
+      .attr('fill', d.fill || (d.active ? color(0) : 'var(--cds-chart-muted)'));
+    const neg = d.value < 0;
+    svg.append('text').attr('class', 'kc-val').attr('x', neg ? x0 - 6 : x1 + 6).attr('text-anchor', neg ? 'end' : 'start').attr('y', yy + row / 2 - 2).attr('dy', '0.32em').text(o.fmt(d.value));
+    svg.append('rect').attr('class', 'kc-hit').attr('x', 0).attr('y', yy).attr('width', W).attr('height', row)
+      .on('mousemove', (ev) => tip.show(ev, d.label, d.lines))
+      .on('mouseleave', () => tip.hide())
+      .on('click', () => o.onClick && o.onClick(d));
+  });
+  if (o.ref != null) svg.append('line').attr('class', 'kc-ref').attr('x1', x(o.ref)).attr('x2', x(o.ref)).attr('y1', 0).attr('y2', H);
+}
+
+function legend(el, items) {
+  el.replaceChildren(...items.map(([c, name]) => { const s = document.createElement('span'); const sw = document.createElement('i'); sw.className = 'kc-sw'; sw.style.background = c; s.append(sw, name); return s; }));
+}
+
+function spark(values) {
+  const w = 72, h = 18, ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'kc-spark'); svg.setAttribute('width', w); svg.setAttribute('height', h); svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('aria-hidden', 'true');
+  const max = Math.max(...values.map((v) => v ?? 0), 1);
+  const pts = values.map((v, i) => [2 + i * (w - 4) / Math.max(1, values.length - 1), h - 2 - (v ?? 0) / max * (h - 4)]);
+  const path = document.createElementNS(ns, 'polyline');
+  path.setAttribute('points', pts.map((p) => p.join(',')).join(' '));
+  path.setAttribute('fill', 'none'); path.setAttribute('stroke', color(0)); path.setAttribute('stroke-width', '1.5'); path.setAttribute('stroke-linejoin', 'round'); path.setAttribute('stroke-linecap', 'round');
+  const dot = document.createElementNS(ns, 'circle');
+  const lp = pts[pts.length - 1];
+  dot.setAttribute('cx', lp[0]); dot.setAttribute('cy', lp[1]); dot.setAttribute('r', '2'); dot.setAttribute('fill', color(0));
+  svg.append(path, dot);
+  return svg;
+}
+
+function chips(cell, flags) {
+  cell.replaceChildren();
+  if (!flags) return;
+  flags.split(', ').forEach((f, i) => {
+    if (i) { const s = document.createElement('span'); s.className = 'kc-sep'; s.textContent = ', '; cell.append(s); }
+    const c = document.createElement('span'); c.className = 'kc-chip' + (f === 'Нула потрошувачка' || f === 'Нагол скок' ? ' kc-bad' : ''); c.textContent = f; cell.append(c);
+  });
+}
+function td(text, cls) { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; return c; }
+function thSpan(text, cls) { const th = document.createElement('th'); if (cls) th.className = cls; const s = document.createElement('span'); s.className = 'kc-th'; s.textContent = text; th.append(s); return th; }
+function markB(source, field, w, text) {
+  const s = document.createElement('b');
+  s.setAttribute('data-source', source); s.setAttribute('data-field', field); s.setAttribute('data-where', where(w)); s.textContent = text;
+  return s;
+}
+
+/* ---------- анализа на светилки ---------- */
+const OPS = ['Кичево', 'Другово', 'Осломеј', 'Вранештица', 'Зајас'];
+const N = (v) => (v === '' || v == null ? null : Number(v));
+const sv = { tab: 'analiza', op: 'Вкупно', month: 'all', sel: null, q: '' };
+
+const svTabs = [...document.querySelectorAll('.kc-tab')];
+function svShow(id, link) {
+  sv.tab = id;
+  for (const t of svTabs) t.setAttribute('aria-selected', String(t.getAttribute('aria-controls') === id));
+  for (const s of document.querySelectorAll('.kc > section')) s.hidden = s.id !== id;
+  if (link) dash.setLink(id);
+  svDraw();
+}
+svTabs.forEach((t) => t.addEventListener('click', () => svShow(t.getAttribute('aria-controls'), true)));
+const fOp = document.getElementById('f-op'), fM = document.getElementById('f-m');
+fM.replaceChildren(new Option('Сите 12 месеци', 'all'), ...MONTHS.map((k) => new Option(longM(k), k)));
+fOp.addEventListener('change', () => { sv.op = fOp.value; sv.sel = null; svDraw(); });
+fM.addEventListener('change', () => { sv.month = fM.value; svDraw(); });
+document.getElementById('m-q').addEventListener('input', (e) => { sv.q = e.target.value.trim().toLowerCase(); svDraw(); });
+document.getElementById('t-mesta').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-s]'); if (tr) { sv.sel = tr.dataset.s; svDraw(); document.getElementById('karta-detal').scrollIntoView({ block: 'nearest' }); } });
+const pickMonth = (k) => { sv.month = sv.month === k ? 'all' : k; svDraw(); };
+const opColor = (g) => color(OPS.indexOf(g));
+const mark = (el, source, field, w) => { el.setAttribute('data-source', source); el.setAttribute('data-field', field); el.setAttribute('data-where', where(w)); return el; };
+
+function svDraw() {
+  fOp.value = sv.op; fM.value = sv.month;
+  const op = dash.data('opstini'), me = dash.data('mesta'), sp = dash.data('sporedba'), pr = dash.data('pretpostavki'), mp = dash.data('mapiranje');
+  svLede(op);
+  if (sv.tab === 'analiza') svAnaliza(op, pr);
+  if (sv.tab === 'mesta') svMesta(me);
+  if (sv.tab === 'sporedba') svSporedba(sp, pr);
+  if (sv.tab === 'mapa') svMapa(mp);
+}
+
+function svLede(op) {
+  const el = document.getElementById('lede-old'), lede = document.getElementById('lede');
+  if (op.status !== 'ok') return;
+  const y = op.data.find((r) => r.opstina === 'Вкупно' && r.mesec === 'all');
+  const months = op.data.filter((r) => r.opstina === 'Вкупно' && r.mesec !== 'all');
+  const lo = months.reduce((a, b) => (N(b.stari_postaveni) < N(a.stari_postaveni) ? b : a)), hi = months.reduce((a, b) => (N(b.stari_postaveni) > N(a.stari_postaveni) ? b : a));
+  el.setAttribute('data-where', where({ opstina: 'Вкупно', mesec: 'all' }));
+  setText(el, f0.format(N(y.stari_postaveni)));
+  el.style.fontWeight = 'var(--cds-font-weight-medium)'; el.style.color = 'var(--color-fg)';
+  lede.replaceChildren('Покрај ', markB('opstini', 'led', { opstina: 'Вкупно', mesec: 'all' }, f0.format(N(y.led))), ' LED светилки од ЈПП, остатокот од потрошувачката одговара на околу ', el,
+    ' стари светилки од 9 W (80 % активни), во просек за 12 месеци. По месеци бројот се движи од ', markB('opstini', 'stari_postaveni', { opstina: 'Вкупно', mesec: lo.mesec }, f0.format(N(lo.stari_postaveni))),
+    ' (' + longM(lo.mesec).toLowerCase() + ') до ', markB('opstini', 'stari_postaveni', { opstina: 'Вкупно', mesec: hi.mesec }, f0.format(N(hi.stari_postaveni))), ' (' + longM(hi.mesec).toLowerCase() + ').');
+}
+
+function svAnaliza(op, pr) {
+  const list = document.getElementById('pretp-list');
+  if (pr.status === 'ok') list.replaceChildren(...pr.data.map((r) => { const li = document.createElement('li'); li.append(r.opis + ': '); li.append(markB('pretpostavki', 'vrednost', { kluch: r.kluch }, r.vrednost)); return li; }));
+  const boxes = ['ch-stari', 'ch-en', 'ch-op'].map((i) => document.getElementById(i));
+  const kp = ['k-led', 'k-old', 'k-act', 'k-share', 'k-def', 'k-rest'].map((i) => document.getElementById(i));
+  if (op.status !== 'ok') { if (op.status === 'error') { boxes.forEach(fail); kp.forEach((e) => setText(e, '—')); } else boxes.forEach(pending); return; }
+  const get = (g, m) => op.data.find((r) => r.opstina === g && r.mesec === m);
+  const cur = get(sv.op, sv.month);
+  const w = where({ opstina: sv.op, mesec: sv.month });
+  kp.forEach((e) => e.setAttribute('data-where', w));
+  setText(kp[0], f0.format(N(cur.led))); setText(kp[1], f0.format(N(cur.stari_postaveni))); setText(kp[2], f0.format(N(cur.stari_aktivni)));
+  setText(kp[3], pct(N(cur.udel_stari), 0)); setText(kp[4], f0.format(N(cur.led_ne_svetat))); setText(kp[5], big(N(cur.ostatok_kwh)));
+  document.getElementById('k-old-u').textContent = 'поставени, ' + (sv.month === 'all' ? 'просек за 12 месеци' : longM(sv.month).toLowerCase());
+  document.getElementById('k-rest-u').textContent = 'kWh над LED, ' + pct(N(cur.ostatok_kwh) / N(cur.kwh), 0) + ' од фактурираното';
+
+  const ops = sv.op === 'Вкупно' ? OPS : [sv.op];
+  document.getElementById('h-stari').textContent = 'Пресметани стари светилки по месец – ' + (sv.op === 'Вкупно' ? 'сите поранешни општини' : sv.op);
+  legend(document.getElementById('lg-stari'), ops.map((g) => [opColor(g), g]));
+  monthBars(boxes[0], MONTHS.map((k) => ({
+    key: k, dim: sv.month !== 'all' && sv.month !== k,
+    parts: ops.map((g) => ({ v: N(get(g, k).stari_postaveni), color: opColor(g), name: g, fmt: (v) => f0.format(v) + ' стари' })),
+    extra: ops.length > 1 ? [[null, 'Вкупно', f0.format(N(get(sv.op, k).stari_postaveni))]] : [],
+  })), { height: 260, onClick: (d) => pickMonth(d.key) });
+
+  document.getElementById('h-en').textContent = 'Каде оди енергијата – ' + (sv.op === 'Вкупно' ? 'сите' : sv.op);
+  legend(document.getElementById('lg-en'), [[color(0), 'LED светилки (ЈПП)'], [color(1), 'Остаток (стари светилки и друго)']]);
+  monthBars(boxes[1], MONTHS.map((k) => {
+    const r = get(sv.op, k), led = Math.min(N(r.kwh_led), N(r.kwh));
+    return { key: k, dim: sv.month !== 'all' && sv.month !== k,
+      parts: [{ v: led, color: color(0), name: 'LED', fmt: (v) => f0.format(v) + ' kWh' }, { v: Math.max(0, N(r.kwh) - led), color: color(1), name: 'Остаток', fmt: (v) => f0.format(v) + ' kWh' }],
+      extra: [[null, 'Фактурирано', f0.format(N(r.kwh)) + ' kWh']] };
+  }), { height: 200, onClick: (d) => pickMonth(d.key) });
+
+  document.getElementById('h-op').textContent = 'По поранешна општина – ' + (sv.month === 'all' ? '12 месеци' : longM(sv.month));
+  legend(document.getElementById('lg-op'), [[color(0), 'LED (ЈПП)'], [color(1), 'Пресметани стари']]);
+  const row = 34, H = OPS.length * row * 2 + 10;
+  boxes[2].style.minHeight = H + 'px';
+  const { svg, W } = svgIn(boxes[2], H);
+  const tip = tipFor(boxes[2]);
+  const max = d3.max(OPS, (g) => Math.max(N(get(g, sv.month).led), N(get(g, sv.month).stari_postaveni))) || 1;
+  const lw = measure(svg, OPS) + 12, vw = measure(svg, [f0.format(max)]) + 10;
+  const x = d3.scaleLinear([0, max], [lw, W - vw]);
+  OPS.forEach((g, i) => {
+    const r = get(g, sv.month), y0 = i * row * 2 + 6;
+    svg.append('text').attr('x', lw - 8).attr('y', y0 + row - 4).attr('text-anchor', 'end').attr('class', g === sv.op ? 'kc-strong' : null).text(g);
+    [[N(r.led), color(0), 'LED'], [N(r.stari_postaveni), color(1), 'Стари']].forEach(([v, c], j) => {
+      const yy = y0 + j * (row - 6) + 4;
+      svg.append('rect').attr('x', lw).attr('y', yy).attr('height', row - 14).attr('width', Math.max(2, x(v) - lw)).attr('rx', 4).attr('fill', c);
+      svg.append('text').attr('class', 'kc-val').attr('x', x(v) + 6).attr('y', yy + (row - 14) / 2).attr('dy', '0.32em').text(f0.format(v));
+    });
+    svg.append('rect').attr('class', 'kc-hit').attr('x', 0).attr('y', y0).attr('width', W).attr('height', row * 2 - 4)
+      .on('mousemove', (ev) => tip.show(ev, g, [[color(0), 'LED (ЈПП)', f0.format(N(r.led))], [color(1), 'Стари (поставени)', f0.format(N(r.stari_postaveni))], [null, 'Удел стари', pct(N(r.udel_stari), 0)], [null, 'LED што не светат', f0.format(N(r.led_ne_svetat))]]))
+      .on('mouseleave', () => tip.hide())
+      .on('click', () => { sv.op = sv.op === g ? 'Вкупно' : g; svDraw(); });
+  });
+
+  const t = document.getElementById('t-op');
+  const hr = document.createElement('tr');
+  hr.append(thSpan('Поранешна општина', 'kc-sticky'), thSpan('LED', 'kc-num'), ...MONTHS.map((k) => thSpan(shortM(k), 'kc-num')), thSpan('12 мес.', 'kc-num'), thSpan('Удел стари', 'kc-num'));
+  t.tHead.replaceChildren(hr);
+  t.tBodies[0].replaceChildren(...OPS.concat(['Вкупно']).map((g) => {
+    const tr = document.createElement('tr');
+    tr.className = 'kc-click' + (g === 'Вкупно' ? ' kc-total' : '');
+    if (g === sv.op) tr.setAttribute('aria-selected', 'true');
+    tr.addEventListener('click', () => { sv.op = g; svDraw(); });
+    tr.append(td(g === 'Вкупно' ? 'Σ Сите' : g, 'kc-sticky'), mark(td(f0.format(N(get(g, 'all').led)), 'kc-num'), 'opstini', 'led', { opstina: g, mesec: 'all' }));
+    for (const k of MONTHS) tr.append(mark(td(f0.format(N(get(g, k).stari_postaveni)), 'kc-num'), 'opstini', 'stari_postaveni', { opstina: g, mesec: k }));
+    tr.append(mark(td(f0.format(N(get(g, 'all').stari_postaveni)), 'kc-num'), 'opstini', 'stari_postaveni', { opstina: g, mesec: 'all' }),
+      mark(td(pct(N(get(g, 'all').udel_stari), 0), 'kc-num'), 'opstini', 'udel_stari', { opstina: g, mesec: 'all' }));
+    return tr;
+  }));
+}
+
+function svMesta(me) {
+  const t = document.getElementById('t-mesta');
+  const box = document.getElementById('ch-d');
+  if (me.status !== 'ok') { t.tBodies[0].replaceChildren(); if (me.status === 'error') fail(box); return; }
+  const rows = me.data;
+  const by = new Map(rows.map((r) => [r.mesto + '|' + r.mesec, r]));
+  const year = rows.filter((r) => r.mesec === 'all' && (sv.op === 'Вкупно' || r.opstina === sv.op)).sort((a, b) => OPS.indexOf(a.opstina) - OPS.indexOf(b.opstina) || N(b.kwh) - N(a.kwh));
+  document.getElementById('h-mesta').textContent = 'Населени места по месец – ' + (sv.op === 'Вкупно' ? 'сите поранешни општини' : sv.op);
+  const hr = document.createElement('tr');
+  hr.append(thSpan('Населено место', 'kc-sticky'), thSpan('Општина', 'kc-hide-sm'), thSpan('LED', 'kc-num'), ...MONTHS.map((k) => thSpan(shortM(k), 'kc-num')), thSpan('12 мес.', 'kc-num'), thSpan('Удел стари', 'kc-num'), thSpan('Статус'));
+  t.tHead.replaceChildren(hr);
+  t.tBodies[0].replaceChildren(...year.map((y) => {
+    const tr = document.createElement('tr');
+    tr.className = 'kc-click'; tr.dataset.s = y.mesto;
+    if (y.mesto === sv.sel) tr.setAttribute('aria-selected', 'true');
+    const name = td(y.mesto, 'kc-sticky'); if (y.naseleni_mesta && y.naseleni_mesta !== y.mesto) name.title = y.naseleni_mesta;
+    tr.append(name, td(y.opstina, 'kc-hide-sm'), mark(td(f0.format(N(y.led)), 'kc-num'), 'mesta', 'led', { mesto: y.mesto, mesec: 'all' }));
+    for (const k of MONTHS) {
+      const r = by.get(y.mesto + '|' + k);
+      if (!r) { tr.append(td('—', 'kc-num kc-r-zero')); continue; }
+      const def = N(r.led_ne_svetat) > 0;
+      const c = td(def ? '−' + f0.format(N(r.led_ne_svetat)) : f0.format(N(r.stari_postaveni)), 'kc-num' + (def ? ' kc-r-less' : N(r.kwh) === 0 ? ' kc-r-zero' : ''));
+      mark(c, 'mesta', def ? 'led_ne_svetat' : 'stari_postaveni', { mesto: y.mesto, mesec: k });
+      c.title = f0.format(N(r.kwh)) + ' kWh · LED ' + f0.format(N(r.kwh_led)) + ' kWh' + (def ? ' · LED што не светат: ' + f0.format(N(r.led_ne_svetat)) : '');
+      tr.append(c);
+    }
+    const st = td(y.status, 'kc-status');
+    tr.append(mark(td(f0.format(N(y.stari_postaveni)), 'kc-num'), 'mesta', 'stari_postaveni', { mesto: y.mesto, mesec: 'all' }),
+      mark(td(y.udel_stari === '' ? '—' : pct(N(y.udel_stari), 0), 'kc-num'), 'mesta', 'udel_stari', { mesto: y.mesto, mesec: 'all' }), mark(st, 'mesta', 'status', { mesto: y.mesto, mesec: 'all' }));
+    return tr;
+  }));
+
+  const sel = sv.sel && by.get(sv.sel + '|all') ? sv.sel : year[0]?.mesto;
+  const y = by.get(sel + '|all');
+  if (!y) { clearChart(box); return; }
+  document.getElementById('d-title').textContent = y.mesto;
+  document.getElementById('d-sub').textContent = 'Поранешна општина ' + y.opstina + (y.naseleni_mesta && y.naseleni_mesta !== y.mesto ? ' (' + y.naseleni_mesta + ')' : '') + ' · ' + f0.format(N(y.merni_mesta)) + ' мерни места · ' + f0.format(N(y.led)) + ' LED (' + f1.format(N(y.led_kw)) + ' kW) · ' + f0.format(N(y.kwh)) + ' kWh за 12 месеци · ' + y.status.toLowerCase() + '.';
+  legend(document.getElementById('lg-d'), [[color(0), 'Енергија на LED'], [color(1), 'Остаток (стари светилки)'], ['var(--cds-chart-status-critical)', 'LED што не светат (недостасувачки kWh)']]);
+  monthBars(box, MONTHS.map((k) => by.get(sel + '|' + k)).filter(Boolean).map((r) => {
+    const e = N(r.kwh), led = N(r.kwh_led);
+    return { key: r.mesec, dim: sv.month !== 'all' && sv.month !== r.mesec,
+      parts: [{ v: Math.min(e, led), color: color(0), name: 'LED', fmt: (v) => f0.format(v) + ' kWh' }, { v: Math.max(0, e - led), color: color(1), name: 'Остаток', fmt: (v) => f0.format(v) + ' kWh' }, { v: Math.max(0, led - e), color: 'var(--cds-chart-status-critical)', name: 'Недостасува', fmt: (v) => f0.format(v) + ' kWh' }],
+      extra: [[null, 'Фактурирано', f0.format(e) + ' kWh'], [null, 'Стари (поставени)', f0.format(N(r.stari_postaveni))], [null, 'LED што не светат', f0.format(N(r.led_ne_svetat))]] };
+  }), { height: 200, onClick: (d) => pickMonth(d.key) });
+}
+
+function svSporedba(sp, pr) {
+  const box = document.getElementById('ch-sp');
+  const body = document.getElementById('t-sp').tBodies[0];
+  if (sp.status !== 'ok') { body.replaceChildren(); if (sp.status === 'error') fail(box); else pending(box); return; }
+  const rows = sp.data;
+  const tot = rows.find((r) => r.opstina === 'Вкупно');
+  const lede = document.getElementById('sp-lede');
+  const total = pr.status === 'ok' ? pr.data.find((r) => r.kluch === 'stari_procenka_vkupno') : null;
+  lede.replaceChildren('Вашите проценки по поранешна општина даваат вкупно ', markB('sporedba', 'procenka_stari', { opstina: 'Вкупно' }, f0.format(N(tot.procenka_stari))), ' стари светилки',
+    total ? ', во согласност со вашата вкупна проценка (над ' : '', ...(total ? [markB('pretpostavki', 'vrednost', { kluch: 'stari_procenka_vkupno' }, f0.format(N(total.vrednost))), ')'] : []),
+    '. Ако старите светилки се од 9 W, потрошувачката бара околу ', markB('sporedba', 'presmetani_stari', { opstina: 'Вкупно' }, f0.format(N(tot.presmetani_stari))),
+    ' стари светилки. За вашиот број да ја објасни потрошувачката, секоја стара светилка би требало да троши околу ', markB('sporedba', 'potrebna_moknost_w', { opstina: 'Вкупно' }, f0.format(N(tot.potrebna_moknost_w)) + ' W'), '.');
+
+  legend(document.getElementById('lg-sp'), [[color(1), 'Пресметан удел стари'], [color(2), 'Ваша проценка']]);
+  const ops = rows.filter((r) => r.opstina !== 'Вкупно');
+  const row = 30, H = ops.length * row * 2 + 24;
+  box.style.minHeight = H + 'px';
+  const { svg, W } = svgIn(box, H);
+  const tip = tipFor(box);
+  const lw = measure(svg, ops.map((r) => r.opstina)) + 12;
+  const x = d3.scaleLinear([0, 1], [lw, W - 46]);
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+    svg.append('line').attr('class', 'kc-gridl').attr('x1', x(v)).attr('x2', x(v)).attr('y1', 0).attr('y2', H - 18);
+    svg.append('text').attr('x', x(v)).attr('y', H - 4).attr('text-anchor', 'middle').text(pct(v, 0));
+  }
+  ops.forEach((r, i) => {
+    const y0 = i * row * 2 + 4;
+    svg.append('text').attr('x', lw - 8).attr('y', y0 + row - 4).attr('text-anchor', 'end').text(r.opstina);
+    [[N(r.presmetan_udel), color(1)], [N(r.procenka_udel), color(2)]].forEach(([v, c], j) => {
+      const yy = y0 + j * (row - 6) + 4;
+      svg.append('rect').attr('x', lw).attr('y', yy).attr('height', row - 12).attr('width', Math.max(2, x(v) - lw)).attr('rx', 4).attr('fill', c);
+      svg.append('text').attr('class', 'kc-val').attr('x', x(v) + 6).attr('y', yy + (row - 12) / 2).attr('dy', '0.32em').text(pct(v, 0));
+    });
+    svg.append('rect').attr('class', 'kc-hit').attr('x', 0).attr('y', y0).attr('width', W).attr('height', row * 2 - 4)
+      .on('mousemove', (ev) => tip.show(ev, r.opstina, [[color(1), 'Пресметан удел', pct(N(r.presmetan_udel), 0)], [color(2), 'Ваша проценка', r.procenka_zapis], [null, 'Стари: пресметани / проценка', f0.format(N(r.presmetani_stari)) + ' / ' + f0.format(N(r.procenka_stari))], [null, 'По месеци', f0.format(N(r.stari_min_mesec)) + ' – ' + f0.format(N(r.stari_max_mesec))], [null, 'Потребна моќност', f0.format(N(r.potrebna_moknost_w)) + ' W']]))
+      .on('mouseleave', () => tip.hide());
+  });
+
+  body.replaceChildren(...rows.map((r) => {
+    const tr = document.createElement('tr');
+    tr.dataset.key = r.opstina;
+    if (r.opstina === 'Вкупно') tr.className = 'kc-total';
+    const wneed = N(r.potrebna_moknost_w);
+    const wc = td(f0.format(wneed) + ' W', 'kc-num ' + (wneed > 20 ? 'kc-r-much' : wneed > 12 ? 'kc-r-more' : 'kc-r-ok'));
+    tr.append(td(r.opstina), td(f0.format(N(r.led)), 'kc-num'), td(f0.format(N(r.presmetani_stari)), 'kc-num'), td(pct(N(r.presmetan_udel), 0), 'kc-num'), td(r.procenka_zapis),
+      td(f0.format(N(r.procenka_stari)), 'kc-num'), td(f0.format(N(r.neobjasneti_kwh)), 'kc-num kc-hide-sm'), wc);
+    return tr;
+  }));
+}
+
+function svMapa(mp) {
+  const body = document.getElementById('t-mapa').tBodies[0];
+  const cnt = document.getElementById('m-count');
+  if (mp.status !== 'ok') { body.replaceChildren(); return; }
+  let rows = mp.data.filter((r) => sv.op === 'Вкупно' || r.group === sv.op);
+  if (sv.q) rows = rows.filter((r) => (r.meter + ' ' + r.address + ' ' + r.settlement + ' ' + r.unit).toLowerCase().includes(sv.q));
+  rows.sort((a, b) => (a.settlement === '') - (b.settlement === '') || OPS.indexOf(a.group) - OPS.indexOf(b.group) || a.settlement.localeCompare(b.settlement, 'mk') || a.address.localeCompare(b.address, 'mk'));
+  cnt.textContent = f0.format(rows.length) + ' мерни места' + (sv.op === 'Вкупно' ? '' : ' (без непрепознаените; за нив изберете „Сите“)');
+  body.replaceChildren(...rows.map((r) => {
+    const tr = document.createElement('tr');
+    tr.dataset.key = r.meter;
+    const a = td(r.address, 'kc-addr'); a.title = r.address;
+    tr.append(td(r.group || '—'), td(r.settlement || 'непрепознаено', r.settlement ? '' : 'kc-status kc-s-less'), td(r.meter), a, td(r.certainty, r.certainty === 'висока' ? '' : 'kc-status kc-s-less'));
+    return tr;
+  }));
+}
+
+dash.onData(svDraw);
+const named = document.getElementById(location.hash.slice(1));
+if (named && named.getAttribute('role') === 'tabpanel') svShow(named.id, false);
+</script>

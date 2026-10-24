@@ -73,6 +73,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 .kc { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); font-variant-numeric: tabular-nums; min-width: 0; }
 .kc-head { display: grid; gap: var(--cds-gap-xs); min-width: 0; }
 .kc-page { display: grid; gap: var(--cds-gap-md); min-width: 0; }
+.kc > section[hidden] { display: none; }
 .kc-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
 .kc-lede { color: var(--color-fg-muted); margin: 0; max-width: 75ch; }
 .kc-lede b, .kc-note b { font-weight: var(--cds-font-weight-medium); color: var(--color-fg); }
