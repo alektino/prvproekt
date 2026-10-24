@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 page = (ROOT / "page.html").read_text(encoding="utf-8")
 sources = {name: (ROOT / "data" / f"{name}.csv").read_text(encoding="utf-8")
-           for name in ("stavki", "svetilki", "mapiranje")}
+           for name in ("stavki", "svetilki", "mapiranje", "naseleni")}
 
 (ROOT / "data" / "stavki.js").write_text(
     "window.KC_CSV = " + json.dumps(sources, ensure_ascii=False) + ";\n",
@@ -61,7 +61,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 <script>
 /* Мала замена за dash API-то на Claude-дашбордот: сите пресметки локално. */
 (function () {
-  const raw = { items: d3.csvParse(window.KC_CSV.stavki), lamps: d3.csvParse(window.KC_CSV.svetilki), mapping: d3.csvParse(window.KC_CSV.mapiranje) };
+  const raw = { items: d3.csvParse(window.KC_CSV.stavki), lamps: d3.csvParse(window.KC_CSV.svetilki), mapping: d3.csvParse(window.KC_CSV.mapiranje), places: d3.csvParse(window.KC_CSV.naseleni) };
   const results = {};
   const listeners = [];
   const defaults = { month: 'all', cat: 'all', area: 'all', measure: 'kwh' };
