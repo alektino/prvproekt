@@ -55,6 +55,9 @@ def izvezi():
     for l in lamps:
         led[l["settlement"]] += int(l["count"])
     order = {p["settlement"]: i for i, p in enumerate(places)}
+    prof_path = IZLEZ / "merni_mesta_profil.csv"
+    prof = {r["meter"]: r for r in csv.DictReader(open(prof_path, encoding="utf-8"))} if prof_path.exists() else {}
+    pcols = lambda m: [float(prof[m]["nokna_moknost_kw"]), float(prof[m]["postojana_moknost_kw"]), prof[m]["profil"]] if m in prof else [None, None, None]
 
     wb = Workbook()
     ws = wb.active
@@ -69,6 +72,11 @@ def izvezi():
         "3. Лист „Населени места“: за секое од 79-те места е прикажано колку мерни места и LED светилки сме препознале.",
         "   Ако знаете мерни места што недостасуваат, запишете ги броевите во „Мерни места што недостасуваат“.",
         "4. Зачувајте ја табелата и испратете ја назад. Поправките се вчитуваат автоматски.",
+        "",
+        "Последните три колони покажуваат како троши мерното место (пресметка од месечните kWh):",
+        "   Ноќна моќност kW – дел што расте и опаѓа со должината на ноќта (светилки).",
+        "   Постојана моќност kW – дел што троши и дење, 24 часа (светилки што светат дење или друг потрошувач на ормарот).",
+        "   Профил: ноќен / мешан / постојан. Мерните места со постојан профил веројатно не се само улично осветлување: проверете ги.",
         "",
         "Населено место = службено име од списокот на 79 населени места.",
         "Единица = населените места Горно/Долно и Големо/Мало се обединети по основното име; Гарани и Стрелци се заедно.",
@@ -88,24 +96,26 @@ def izvezi():
 
     ok = wb.create_sheet("Препознаени", 1)
     header(ok, ["Поранешна општина", "Населено место", "Единица", "Мерно место", "Адреса (последна фактура)", "Други записи на адресата", "Сигурност", "kWh 12 мес.",
-                "Точно? (Да/Не)", "Точно населено место (ако е грешка)", "Забелешка"], [14, 22, 20, 17, 40, 34, 11, 11, 10, 26, 30])
+                "Точно? (Да/Не)", "Точно населено место (ако е грешка)", "Забелешка", "Ноќна моќност kW", "Постојана моќност kW", "Профил"],
+           [14, 22, 20, 17, 40, 34, 11, 11, 10, 26, 30, 11, 11, 11])
     known = sorted([r for r in mapping if r["settlement"]], key=lambda r: (GROUPS.index(r["group"]), order[r["settlement"]], r["address"]))
     for r in known:
         other = " / ".join(sorted(addresses[r["meter"]] - {r["address"]}))
-        ok.append([r["group"], r["settlement"], r["unit"], r["meter"], r["address"], other, r["certainty"], round(kwh[r["meter"]]), None, None, None])
+        ok.append([r["group"], r["settlement"], r["unit"], r["meter"], r["address"], other, r["certainty"], round(kwh[r["meter"]]), None, None, None] + pcols(r["meter"]))
         if r["certainty"] != "висока":
             for c in ok[ok.max_row][:8]:
                 c.fill = CHECK
     d1, d2 = dv_yes, dv_place()
     ok.add_data_validation(d1); ok.add_data_validation(d2)
     d1.add(f"I2:I{ok.max_row}"); d2.add(f"J2:J{ok.max_row}")
-    ok.auto_filter.ref = f"A1:K{ok.max_row}"
+    ok.auto_filter.ref = f"A1:N{ok.max_row}"
 
     un = wb.create_sheet("Непрепознаени", 2)
-    header(un, ["Поранешна општина (според бројот)", "Мерно место", "Адреса (последна фактура)", "Други записи на адресата", "kWh 12 мес.", "Точно населено место", "Забелешка"], [18, 17, 40, 34, 11, 26, 30])
+    header(un, ["Поранешна општина (според бројот)", "Мерно место", "Адреса (последна фактура)", "Други записи на адресата", "kWh 12 мес.", "Точно населено место", "Забелешка",
+                "Ноќна моќност kW", "Постојана моќност kW", "Профил"], [18, 17, 40, 34, 11, 26, 30, 11, 11, 11])
     for r in sorted([r for r in mapping if not r["settlement"]], key=lambda r: -kwh[r["meter"]]):
         other = " / ".join(sorted(addresses[r["meter"]] - {r["address"]}))
-        un.append([r["group"] or group_of_meter(r["meter"]), r["meter"], r["address"], other, round(kwh[r["meter"]]), None, None])
+        un.append([r["group"] or group_of_meter(r["meter"]), r["meter"], r["address"], other, round(kwh[r["meter"]]), None, None] + pcols(r["meter"]))
         un.cell(un.max_row, 6).fill = TODO
     d3 = dv_place(); un.add_data_validation(d3); d3.add(f"F2:F{max(un.max_row, 2)}")
 
