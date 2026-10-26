@@ -1,0 +1,3 @@
+mesto,led_izbrojani,stari_izbrojani,led_popis,izmereno_kw,led_kw_popis,potrebno_led_kw,zameni_64_5,zakluchok,v4_stari,v5_stari
+Староец,29,26,33,1.775,0.751,1.567,21,"Се објаснува: 21 од 29 LED се 64,5 W",115,10
+Видрани,7,23,7,1.161,0.181,0.977,,"Не се објаснува ни ако сите 7 LED се 64,5 W (недостасуваат 0.53 kW)",122,89
